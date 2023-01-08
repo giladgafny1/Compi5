@@ -59,8 +59,8 @@ public:
     bool isDec(const std::string& name, bool function);
     bool isAlreadyDecInScope(const std::string& name);
     void addFunctionParam(const FormalDecl_c& decl, int offset);
-    bool checkFunctionParams(std::vector<Exp_c*>& expressions, const std::string& name);
-    bool checkFunctionParams(const std::string& name);
+    void checkFunctionParams(std::vector<Exp_c*>& expressions, const std::string& name);
+    void checkFunctionParams(const std::string& name);
     bool inScopeWhile(Table *table);
     bool checkSamefunctionReturnType(type_enum type, bool is_void);
     type_enum getTypeByName(const std::string& name);

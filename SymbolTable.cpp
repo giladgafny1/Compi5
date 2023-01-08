@@ -86,7 +86,7 @@ bool SymbolTable::compareByteInt(std::string type1, std::string type2)
 }
 
 
-bool SymbolTable::checkFunctionParams(std::vector<Exp_c*>& expressions, const std::string& name)
+void SymbolTable::checkFunctionParams(std::vector<Exp_c*>& expressions, const std::string& name)
 {
     Table* curr_table = this->tables.top();
     TableEntry* table_entry;
@@ -123,7 +123,7 @@ bool SymbolTable::checkFunctionParams(std::vector<Exp_c*>& expressions, const st
 }
 
 
-bool SymbolTable::checkFunctionParams(const std::string& name)
+void SymbolTable::checkFunctionParams(const std::string& name)
 {
     Table* curr_table = this->tables.top();
     TableEntry* table_entry;
