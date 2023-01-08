@@ -21,6 +21,8 @@ enum type_enum {
     None_t
 };
 
+typedef std::string E_var;
+
 class Node {
 public:
      virtual ~Node() {};
@@ -50,7 +52,8 @@ public:
 class Exp_c : public Node {
 public:
     type_enum type;
-    Exp_c(type_enum type) : type(type){}
+    E_var var;
+    Exp_c(type_enum type, E_var var) : type(type), var(var){}
     
 };
 
@@ -75,10 +78,8 @@ class FuncDecl_c : public Node{
     std::string name;
     std::vector<FormalDecl_c*> decls;
     FuncDecl_c(type_enum type , const std::vector<FormalDecl_c*>& decls, std::string name) :
-     type(type), decls(decls), name(name){};
+    type(type), decls(decls), name(name){};
 };
-
-
 
 class FormalsList_c: public Node {
 public:

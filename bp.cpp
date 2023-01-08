@@ -8,9 +8,9 @@ bool replace(string& str, const string& from, const string& to, const BranchLabe
 
 CodeBuffer::CodeBuffer() : buffer(), globalDefs() {}
 
-CodeBuffer &CodeBuffer::instance() {
+CodeBuffer *CodeBuffer::instance() {
 	static CodeBuffer inst;//only instance
-	return inst;
+	return &inst;
 }
 
 string CodeBuffer::genLabel(){

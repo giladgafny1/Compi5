@@ -65,7 +65,7 @@ public:
     bool checkSamefunctionReturnType(type_enum type, bool is_void);
     type_enum getTypeByName(const std::string& name);
     bool isFunctionAlreadyDecInScope(const std::string& name);
-    bool isMainExist();
+    void isMainExist();
     
 };
 

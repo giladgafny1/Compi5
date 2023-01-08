@@ -17,7 +17,7 @@ class CodeBuffer{
 	std::vector<std::string> buffer;
 	std::vector<std::string> globalDefs;
 public:
-	static CodeBuffer &instance();
+	static CodeBuffer *instance();
 
 	// ******** Methods to handle the code section ******** //
 

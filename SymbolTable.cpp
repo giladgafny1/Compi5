@@ -259,7 +259,7 @@ void Table::insert(TableEntry *entry)
     this->entry_list.push_back(entry);
 }
 
-bool SymbolTable::isMainExist()
+void SymbolTable::isMainExist()
 {
     Table* curr_table = this->tables.top();
     TableEntry* table_entry = nullptr;

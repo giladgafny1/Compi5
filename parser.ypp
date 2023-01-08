@@ -1,0 +1,424 @@
+%{
+#include "hw3_output.hpp"
+#include "Stypes.hpp"
+#include "SymbolTable.hpp"
+#include "CodeGen.hpp"
+#include <iostream>
+#include <stdlib.h>
+extern int yylex();
+extern int yylineno;
+using namespace output;
+
+int yyerror(const char * message);
+
+SymbolTable *sym_table = SymbolTable::getSymTable();
+CodeBuffer *cb = CodeBuffer::instance();
+CodeGen *code_gen;
+%}
+
+
+%nonassoc ID STRING NUM VOID INT BYTE B BOOL
+%right ASSIGN
+%left OR
+%left AND
+%nonassoc TRUE
+%nonassoc FALSE
+%nonassoc RETURN
+%nonassoc WHILE
+%right IF
+%nonassoc BREAK
+%nonassoc CONTINUE
+%nonassoc COMMA
+%nonassoc LBRACE
+%nonassoc RBRACE
+%left EQUAL_RELOP
+%left RELOP
+%left MULT_DIV
+%left PLUS
+%left MINUS
+%right NOT
+%left LPAREN
+%left RPAREN
+%left SC
+%nonassoc ELSE
+%nonassoc END
+
+%%
+Program : Funcs END {sym_table->isMainExist(); sym_table->closeScope();code_gen->cb->printCodeBuffer(); exit(0);}
+Funcs : /* Epsilon */
+        | FuncDecl Funcs
+FuncDecl : RetType ID LPAREN Formals {
+            sym_table->newScope(false);
+            RetType_c* ret_type =  (RetType_c*)$1;
+            Formals_c* formals = (Formals_c*)$4;
+            ID_c* id = (ID_c*)$2;
+            id->type = ret_type->type;
+            if (sym_table->isFunctionAlreadyDecInScope(id->name)) {
+                    errorDef(yylineno, id->name);
+                    exit(1);
+            }
+            $$ = new FuncDecl_c(ret_type->type , formals->decls, id->name);
+            sym_table->addFunction(sym_table->tables.top(), id->name, ret_type->type, NO_OFFSET);
+            sym_table->function_name_scope= id->name;
+            int offset = -1;
+            int keep_offset = sym_table->offsets.top();
+            for (auto & param : formals->decls) {
+                if (sym_table->isAlreadyDecInScope(param->name)) {
+                    errorDef(yylineno, param->name);
+                    exit(1);
+                }
+                sym_table->addFunctionParam(*param, offset);
+                offset--;
+            }
+            sym_table->offsets.pop();
+            sym_table->offsets.push(keep_offset);
+        } RPAREN LBRACE Statements RBRACE {sym_table->function_name_scope= "";sym_table->closeScope();}
+RetType : Type {Type_c* type = (Type_c*)$1;
+                $$ = new RetType_c(type->type);}
+        |  VOID { $$ = new RetType_c(Void_t);}
+Formals : /* Epsilon */
+        {  $$ = new Formals_c();}
+        | FormalsList 
+          {    FormalsList_c* formal_list = (FormalsList_c*)$1;
+                $$ = new Formals_c(formal_list->decls);}
+FormalsList : FormalDecl {FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
+                            std::vector<FormalDecl_c*> vec;
+                            vec.insert(vec.begin(), formaldecl);
+                            FormalsList_c* formals_list = new FormalsList_c(vec);
+                            $$ = formals_list;}
+        | FormalDecl COMMA FormalsList
+        {
+            FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
+            FormalsList_c* formal_list = (FormalsList_c*)$3;
+            formal_list->decls.insert(formal_list->decls.begin(), formaldecl);
+            $$ = new FormalsList_c(formal_list->decls);
+        }
+FormalDecl : Type ID    {Type_c* type = (Type_c*)$1;
+                        ID_c* id = (ID_c*)$2;
+                        if (sym_table->isAlreadyDecInScope(id->name)) {
+                                errorDef(yylineno, id->name);
+                                exit(1);
+                        }
+                        FormalDecl_c* formaldecl = new FormalDecl_c(type->type, id->name);
+                        $$ = formaldecl;}
+Statements : Statement
+            | Statements Statement
+Statement : LBRACE ScopeOpen Statements RBRACE {
+                sym_table->closeScope();}
+            | Type ID SC    {Type_c* type = (Type_c*)$1;
+                            ID_c* id = (ID_c*)$2;
+                            if (sym_table->isAlreadyDecInScope(id->name)) {
+                                    errorDef(yylineno, id->name);
+                                    exit(1);
+                            }
+                            sym_table->insert(sym_table->tables.top(), id->name, type->type, sym_table->offsets.top() + 1);
+                            id->type = type->type;
+                            }
+            | Type ID ASSIGN Exp SC     {
+                Type_c* type = (Type_c*)$1;
+                ID_c* id = (ID_c*)$2;
+                Exp_c* exp = (Exp_c*)$4;
+                if (sym_table->isAlreadyDecInScope(id->name)) {
+                    errorDef(yylineno, id->name);
+                    exit(1);
+                    }
+                if (!checkTypeExp(*type, *exp)) {
+                    errorMismatch(yylineno);
+                    exit(1);
+                }
+                sym_table->insert(sym_table->tables.top(), id->name, type->type, sym_table->offsets.top() + 1);
+                id->type = type->type;
+                }
+            | ID ASSIGN Exp SC
+            {
+                ID_c* id = (ID_c*)($1);
+                Exp_c* exp = (Exp_c*)$3;
+                if(!sym_table->isDec(id->name, false))
+                {
+                     errorUndef(yylineno, id->name);
+                     exit(1);
+                }
+                 if (!checkTypeExpId(sym_table->getTypeByName(id->name), *exp)) {
+                     errorMismatch(yylineno);
+                     exit(1);
+                }
+            }
+            | Call SC 
+            | RETURN SC
+            {
+                if(!sym_table->checkSamefunctionReturnType(Void_t, true))
+                {
+                    errorMismatch(yylineno);
+                    exit(1);
+                }
+            }
+            | RETURN Exp SC
+            {
+                Exp_c* exp1 = (Exp_c*)$2;
+                if(!sym_table->checkSamefunctionReturnType(exp1->type, false))
+                {
+                    errorMismatch(yylineno);
+                    exit(1);
+                }
+            }
+            | IF  LPAREN CheckBoolExp RPAREN ScopeOpen Statement ScopeClose
+            | IF LPAREN CheckBoolExp RPAREN ScopeOpen Statement ScopeClose ELSE ScopeOpen Statement ScopeClose
+            | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen Statement ScopeClose
+            | BREAK SC
+            {
+                if(!sym_table->inScopeWhile(sym_table->tables.top()))
+                {
+                    errorUnexpectedBreak(yylineno);
+                    exit(1);
+                }
+            }
+            | CONTINUE SC
+            {
+                if(!sym_table->inScopeWhile(sym_table->tables.top()))
+                {
+                    errorUnexpectedContinue(yylineno);
+                    exit(1);
+                }
+            }
+Call : ID LPAREN ExpList RPAREN
+        {
+         ID_c* id = (ID_c*)($1);
+         ExpList_c* exp_list = (ExpList_c*)$3;
+         if(!sym_table->isDec(id->name , true))
+        {
+             errorUndefFunc(yylineno, id->name);
+             exit(1);
+        }
+        sym_table->checkFunctionParams(exp_list->expressions, id->name);
+        $$ = new Call_c(sym_table->getTypeByName(id->name), id->name);
+        }
+    | ID LPAREN RPAREN
+    {
+        ID_c* id = (ID_c*)($1);  
+        if(!sym_table->isDec(id->name , true))
+        {
+             errorUndefFunc(yylineno, id->name);
+             exit(1);
+        }
+        sym_table->checkFunctionParams(id->name);
+        $$ = new Call_c(sym_table->getTypeByName(id->name), id->name);
+    }
+ExpList : Exp
+        {
+            Exp_c* exp1 = (Exp_c*)$1;
+            std::vector<Exp_c*> expressions;
+            expressions.push_back(exp1);
+            $$ = new ExpList_c(expressions);
+        }
+        | Exp COMMA ExpList
+        {
+            Exp_c* exp1 = (Exp_c*)$1;
+            ExpList_c* exp_list = (ExpList_c*)$3;
+            exp_list->expressions.push_back(exp1);
+            $$ = new ExpList_c(exp_list->expressions);  
+        }
+Type : INT  {$$ = new Type_c(Int_t);}
+        | BYTE {$$ = new Type_c(Byte_t);}
+        | BOOL {$$ = new Type_c(Bool_t);}
+Exp : LPAREN Exp RPAREN {
+        Exp_c* exp = (Exp_c*)$2;
+        E_var var = code_gen->freshVar();
+        $$ = new Exp_c(exp->type, var);
+        }
+    | Exp IF LPAREN Exp RPAREN ELSE Exp
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$4;
+        Exp_c* exp3 = (Exp_c*)$7;
+
+        if((!checkBoolExp(*exp2)) || checkSameTypeExp(*exp1, *exp3) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+        else
+        {
+            E_var var = code_gen->freshVar();
+            $$ = new Exp_c(checkSameTypeExp(*exp1, *exp3), var);   
+        }
+    }
+    %prec IF
+    | Exp PLUS Exp
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
+        if(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+        E_var var = code_gen->freshVar();
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+        //check_types
+        code_gen->cb->emit(var + " = add i32 " + exp1->var + ", " + exp2->var);
+    }
+    | Exp MINUS Exp
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
+        if(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+        E_var var = code_gen->freshVar();
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+    }
+    | Exp MULT_DIV Exp
+    {
+        if(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+        E_var var = code_gen->freshVar();
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+    }
+    | ID        {ID_c* id = (ID_c*)($1);
+                if(!sym_table->isDec(id->name, false)) {
+                        errorUndef(yylineno, id->name);
+                        exit(1);
+                }
+                $$ = new Exp_c(sym_table->getTypeByName(id->name), "");
+                
+                }
+    | Call
+    {
+        Call_c* call = (Call_c*)$1;
+        E_var var = code_gen->freshVar();
+        $$ = new Exp_c(call->type, var);
+    }
+    | NUM   {
+            $$ = new Exp_c(Int_t, "");
+            Num_c* num = (Num_c*)($1);
+            //code_gen->cb->emit(var + " = add i32 " + std::string(num->num_str) + ", 0");
+            }
+    | NUM B {
+        Num_c* num = (Num_c*)$1;
+        int value = stoi(num->num_str);
+        if (value > 255)
+        {
+            errorByteTooLarge(yylineno, num->num_str);
+            exit(1);
+        }
+        $$ = new Exp_c(Byte_t, "");}
+    | STRING    {
+                E_var var = code_gen->freshVar();
+                $$ = new Exp_c(String_t, var);}
+    | TRUE  {E_var var = code_gen->freshVar();
+            $$ = new Exp_c(Bool_t, var);
+            }
+    | FALSE {E_var var = code_gen->freshVar();
+            $$ = new Exp_c(Bool_t, var);
+            }
+    | NOT Exp {
+                if (checkBoolExp(*(Exp_c*)$2)) {
+                    E_var var = code_gen->freshVar();
+                    $$ = new Exp_c(Bool_t, var);
+                }
+                else
+                {
+                    errorMismatch(yylineno);
+                    exit(1);}
+                }
+    | Exp AND Exp {
+                    Exp_c* exp1 = (Exp_c*)$1;
+                    Exp_c* exp2 = (Exp_c*)$3;
+                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$3)) {
+                        E_var var = code_gen->freshVar();
+                        $$ = new Exp_c(Bool_t, var);
+                    }  
+                   else
+                   {
+                        errorMismatch(yylineno);
+                        exit(1);}
+                    }
+    | Exp OR Exp {
+                    Exp_c* exp1 = (Exp_c*)$1;
+                    Exp_c* exp2 = (Exp_c*)$3;
+                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$3))
+                    {
+                        E_var var = code_gen->freshVar();
+                        $$ = new Exp_c(Bool_t, var);
+                    }
+                    else{
+                        errorMismatch(yylineno);
+                        exit(1);}
+                    }
+
+    | Exp RELOP Exp
+    
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
+        if(checkNumType(*exp1, *exp2) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+
+        }
+        else {
+            E_var var = code_gen->freshVar();
+            $$ = new Exp_c(Bool_t, var);
+        }
+    }
+    | Exp EQUAL_RELOP Exp
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
+        if(checkNumType(*exp1, *exp2) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+
+        }
+        else {
+            E_var var = code_gen->freshVar();
+           $$ = new Exp_c(Bool_t, var);
+           }
+    }
+    | LPAREN Type RPAREN Exp
+    {
+        Type_c* type = (Type_c*)$2;
+        Exp_c* exp = (Exp_c*)$4;
+        if(checkAssigment(type->type , *exp) != None_t) {
+            E_var var = code_gen->freshVar();
+            $$ = new Exp_c(type->type, var);
+        }
+        else
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+    }
+ScopeOpen : /* Epsilon */ {
+                            sym_table->newScope(false);}
+ScopeWhileOpen : /* Epsilon */ {
+                            sym_table->newScope(true);}
+ScopeClose : /* Epsilon */ {sym_table->closeScope();}   
+
+CheckBoolExp : Exp {
+                if (!checkBoolExp(*(Exp_c*)$1))
+                {
+                    errorMismatch(yylineno);
+                    exit(1);
+                }
+                }
+%%
+
+int main()
+{
+    sym_table->makeGlob();
+    code_gen = new CodeGen(cb);
+	yyparse();
+}
+
+int yyerror(const char * message)
+{
+	errorSyn(yylineno);
+}
