@@ -84,14 +84,16 @@ void CodeGen::emit_relop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string r
 
     /* Generating a var here (and not in parser), becuase not all relops need a var */
     E_var var = this->freshVar();
-    this->cb->emit(var + " = " + "icmp " + relop_instr + exp1.var + ", " + exp2.var);
+    this->cb->emit(var + " = " + "icmp " + relop_instr + " i32 " + exp1.var + ", " + exp2.var);
     new_exp.var = var;
+    // why we do emit br right after this? 
     int address = this->cb->emit("br i1 " + var + ", label @, label @");
     new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(address, SECOND));
 }
 
-void emit_and(Exp_c& exp1, Exp_c&, Exp_c& new_exp) {
+void emit_and(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp) {
+
     /* Fill according to slide 50 */
 }
 
