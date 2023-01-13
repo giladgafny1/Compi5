@@ -8,7 +8,7 @@ std::string CodeGen::freshVar() {
     return var;
 }
 
-void CodeGen::emit_binop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string binop_text)
+void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text)
 {
     //if (binop_text == "/")
         //add check divide by zero - Gilad: It needs to be in the code since it's a run-time thing.
@@ -47,7 +47,7 @@ void CodeGen::emit_binop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string b
     }
 }
 
-void CodeGen::emit_relop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string relop_text) {
+void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text) {
     std::string relop_instr = "";
     bool sign;
     if (relop_text == "==") {
@@ -92,9 +92,11 @@ void CodeGen::emit_relop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string r
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(address, SECOND));
 }
 
-void emit_and(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp) {
-
-    /* Fill according to slide 50 */
+void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
+    /* Filled according to slide 50 */
+    this->cb->bpatch(exp1.truelist, label);
+    new_exp.truelist = this->cb->merge(exp1.truelist, exp2.truelist);
+    new_exp.falselist = exp2.falselist;
 }
 
 

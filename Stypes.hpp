@@ -117,6 +117,13 @@ public:
     Num_c(const std::string num_str) : num_str(num_str){};
 };
 
+class Marker : public Node {
+public:
+    std::string label;
+
+    Marker(const std::string label) : label(label) {}; 
+};
+
 bool checkBoolExp(Exp_c& exp);
 bool checkBoolExp(Exp_c& exp1, Exp_c& exp2);
 bool checkTypeExp(Type_c& type, Exp_c& exp);

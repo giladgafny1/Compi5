@@ -15,7 +15,7 @@ public:
     
     std::string freshVar();
     //void alloc_stack(int alloc_size, )
-    void emit_binop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string binop_text);
+    void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
 
     /** 
      * Emit relop function should be called only when we must use a bool variable:
@@ -24,9 +24,9 @@ public:
      * 3. Before a bool type is returned from a function.
      * 4. before a bool type is sent as a parameter.
      **/
-    void emit_relop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string relop_text);
+    void emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text);
 
-    void emit_and(Exp_c& exp1, Exp_c&, Exp_c& new_exp);
+    void handle_and(const Exp_c& exp1,const Exp_c& exp2, Exp_c& new_exp, const std::string label);
 
 };
 #endif
