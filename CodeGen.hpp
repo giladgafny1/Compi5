@@ -16,6 +16,15 @@ public:
     std::string freshVar();
     //void alloc_stack(int alloc_size, )
     void emit_binop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string binop_text);
-};
 
+    /** 
+     * Emit relop function should be called only when we must use a bool variable:
+     * 1. When a bool type is assigned or read.
+     * 2. When a relop is calculated by icmp.
+     * 3. Before a bool type is returned from a function.
+     * 4. before a bool type is sent as a parameter.
+     **/
+    // TODO: not sure really if need to be serperated or not.
+    void emit_relop(Exp_c& exp1, Exp_c& exp2, Exp_c& new_exp, std::string relop_text);
+}
 #endif

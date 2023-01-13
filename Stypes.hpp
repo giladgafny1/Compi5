@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include "string"
+#include "bp.hpp"
 #define NO_OFFSET -1
 #define YYSTYPE Node*
 
@@ -22,6 +23,7 @@ enum type_enum {
 };
 
 typedef std::string E_var;
+typedef std::vector<std::pair<int,BranchLabelIndex>> AddList;
 
 class Node {
 public:
@@ -53,6 +55,7 @@ class Exp_c : public Node {
 public:
     type_enum type;
     E_var var;
+
     Exp_c(type_enum type, E_var var) : type(type), var(var){}
     
 };
