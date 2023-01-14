@@ -324,7 +324,11 @@ Exp : LPAREN Exp RPAREN {
                 else
                 {
                     errorMismatch(yylineno);
-                    exit(1);}
+                    exit(1);
+                }
+                Exp_c* new_exp = (Exp_c*)$$;
+                Exp_c* exp = (Exp_c*)$1;
+                code_gen->handle_not(*exp, *new_exp);
                 }
     | Exp AND M Exp {
                     Exp_c* exp1 = (Exp_c*)$1;
@@ -339,21 +343,25 @@ Exp : LPAREN Exp RPAREN {
                         exit(1);
                     }
                     Exp_c* exp3 = (Exp_c*)$$;
-                    M* marker = (Marker*)$3;
+                    Marker* marker = (Marker*)$3;
                     code_gen->handle_and(*exp1, *exp2, *exp3, marker->label);
                     }
                     
     | Exp OR M Exp {
                     Exp_c* exp1 = (Exp_c*)$1;
-                    Exp_c* exp2 = (Exp_c*)$3;
-                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$3))
+                    Exp_c* exp2 = (Exp_c*)$4;
+                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$4))
                     {
                         E_var var = code_gen->freshVar();
                         $$ = new Exp_c(Bool_t, var);
                     }
                     else{
                         errorMismatch(yylineno);
-                        exit(1);}
+                        exit(1);
+                    }
+                    Exp_c* exp3 = (Exp_c*)$$;
+                    Marker* marker = (Marker*)$3;
+                    code_gen->handle_or(*exp1, *exp2, *exp3, marker->label);
                     }
 
     | Exp RELOP Exp

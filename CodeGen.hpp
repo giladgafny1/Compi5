@@ -26,7 +26,11 @@ public:
      **/
     void emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text);
 
-    void handle_and(const Exp_c& exp1,const Exp_c& exp2, Exp_c& new_exp, const std::string label);
+    void handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label);
+
+    void handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label);
+    
+    void handle_not(const Exp_c& exp, Exp_c& new_exp);
 
 };
 #endif

@@ -95,8 +95,19 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
 void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
     /* Filled according to slide 50 */
     this->cb->bpatch(exp1.truelist, label);
+    new_exp.truelist = exp2.truelist;
+    new_exp.falselist = this->cb->merge(exp1.falselist, exp2.falselist);
+}
+
+void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
+    this->cb->bpatch(exp1.falselist, label);
     new_exp.truelist = this->cb->merge(exp1.truelist, exp2.truelist);
     new_exp.falselist = exp2.falselist;
+}
+    
+void CodeGen::handle_not(const Exp_c& exp, Exp_c& new_exp) {
+    new_exp.truelist = exp.falselist;
+    new_exp.falselist = exp.truelist;
 }
 
 
