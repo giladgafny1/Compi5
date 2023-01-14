@@ -8,6 +8,10 @@ std::string CodeGen::freshVar() {
     return var;
 }
 
+int CodeGen::allocStack(int var_size) {
+    
+}
+
 void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text)
 {
     //if (binop_text == "/")
@@ -86,7 +90,6 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     E_var var = this->freshVar();
     this->cb->emit(var + " = " + "icmp " + relop_instr + " i32 " + exp1.var + ", " + exp2.var);
     new_exp.var = var;
-    // why we do emit br right after this? 
     int next_instr = this->cb->emit("br i1 " + var + ", label @, label @");
     new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, SECOND));
@@ -132,6 +135,10 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
         new_exp.truelist = exp.truelist;
         new_exp.falselist = exp.falselist;
     }
+}
+
+void CodeGen::handle_id_to_exp(Exp_c& new_exp) {
+    
 }
 
 

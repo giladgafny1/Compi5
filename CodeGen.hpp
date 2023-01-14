@@ -14,9 +14,15 @@ public:
     /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
     std::string freshVar();
-    //void alloc_stack(int alloc_size, )
-    void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
+    /** 
+     * Allocating mem on stack for local variables.
+     * Always allocating 32 bits (4 bytes).
+     * If bool/byte type, then uses zext instr.
+     * Returns offset of allocated var.
+     */
+    int allocStack(int var_size);
 
+    /* Boolean handling functions */
     /** 
      * Emit relop function should be called only when we must use a bool variable:
      * 1. When a bool type is assigned or read.
@@ -36,6 +42,15 @@ public:
 
     void handle_false(Exp_c& new_exp);
 
+    /* Both for General Expressions and for booleans*/
     void handle_parentheses(const Exp_c& exp, Exp_c& new_exp);
+
+    /* Expressions handling function */
+
+    void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
+
+    void handle_id_to_exp(Exp_c& new_exp);
+
+
 };
 #endif
