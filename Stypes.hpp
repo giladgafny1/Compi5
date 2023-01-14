@@ -23,7 +23,7 @@ enum type_enum {
 };
 
 typedef std::string E_var;
-typedef std::vector<std::pair<int,BranchLabelIndex>> AddList;
+typedef std::vector<std::pair<int,BranchLabelIndex>> InstrList;
 
 class Node {
 public:
@@ -55,11 +55,12 @@ class Exp_c : public Node {
 public:
     type_enum type;
     E_var var;
-    AddList truelist;
-    AddList falselist;
-    AddList nextlist;
+    InstrList truelist;
+    InstrList falselist;
+    InstrList nextlist;
 
     Exp_c(type_enum type, E_var var) : type(type), var(var){}
+    Exp_c(type_enum type) : type(type){}
     
 };
 

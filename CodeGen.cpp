@@ -87,9 +87,9 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     this->cb->emit(var + " = " + "icmp " + relop_instr + " i32 " + exp1.var + ", " + exp2.var);
     new_exp.var = var;
     // why we do emit br right after this? 
-    int address = this->cb->emit("br i1 " + var + ", label @, label @");
-    new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
-    new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(address, SECOND));
+    int next_instr = this->cb->emit("br i1 " + var + ", label @, label @");
+    new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
+    new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, SECOND));
 }
 
 void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
@@ -108,6 +108,30 @@ void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, co
 void CodeGen::handle_not(const Exp_c& exp, Exp_c& new_exp) {
     new_exp.truelist = exp.falselist;
     new_exp.falselist = exp.truelist;
+}
+
+void CodeGen::handle_true(Exp_c& new_exp) {
+    int next_instr = this->cb->emit("br @");
+    new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
+    /* falselist is empty */
+    
+}
+
+void CodeGen::handle_false(Exp_c& new_exp) {
+    int next_instr = this->cb->emit("br @");
+    new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
+    /* truelist is empty */
+}
+
+void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
+    if (exp.type != Bool_t) {
+        new_exp.var = exp.var;
+    }
+    else {
+        /* Bool type */
+        new_exp.truelist = exp.truelist;
+        new_exp.falselist = exp.falselist;
+    }
 }
 
 

@@ -224,6 +224,8 @@ Exp : LPAREN Exp RPAREN {
         Exp_c* exp = (Exp_c*)$2;
         E_var var = code_gen->freshVar();
         $$ = new Exp_c(exp->type, var);
+        Exp_c* new_exp = (Exp_c*)$$;
+        code_gen->handle_parentheses(*exp, *new_exp);
         }
     | Exp IF LPAREN Exp RPAREN ELSE Exp
     {
@@ -308,18 +310,20 @@ Exp : LPAREN Exp RPAREN {
         }
         $$ = new Exp_c(Byte_t, "");}
     | STRING    {
-                E_var var = code_gen->freshVar();
-                $$ = new Exp_c(String_t, var);}
-    | TRUE  {E_var var = code_gen->freshVar();
-            $$ = new Exp_c(Bool_t, var);
+                $$ = new Exp_c(String_t);}
+    | TRUE  {
+            $$ = new Exp_c(Bool_t);
+            Exp_c* new_exp = (Exp_c*)($$);
+            code_gen->handle_true(*new_exp);
             }
-    | FALSE {E_var var = code_gen->freshVar();
-            $$ = new Exp_c(Bool_t, var);
+    | FALSE {
+            $$ = new Exp_c(Bool_t);
+            Exp_c* new_exp = (Exp_c*)($$);
+            code_gen->handle_false(*new_exp);
             }
     | NOT Exp {
                 if (checkBoolExp(*(Exp_c*)$2)) {
-                    E_var var = code_gen->freshVar();
-                    $$ = new Exp_c(Bool_t, var);
+                    $$ = new Exp_c(Bool_t);
                 }
                 else
                 {

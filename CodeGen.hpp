@@ -32,5 +32,10 @@ public:
     
     void handle_not(const Exp_c& exp, Exp_c& new_exp);
 
+    void handle_true(Exp_c& new_exp);
+
+    void handle_false(Exp_c& new_exp);
+
+    void handle_parentheses(const Exp_c& exp, Exp_c& new_exp);
 };
 #endif
