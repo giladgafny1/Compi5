@@ -11,11 +11,12 @@ using namespace output;
 class TableEntry{
 public:
     const std::string name;
+    std::string var;
     type_enum type;
     int offset;
     bool isfunction;
     std::vector<std::string> argtypes;
-    TableEntry(const std::string& name, type_enum type, int offset, bool isfunction = false) : name(name), type(type), offset(offset), isfunction(isfunction){};
+    TableEntry(const std::string& name, type_enum type, int offset, std::string var,  bool isfunction = false) : name(name), type(type), offset(offset), isfunction(isfunction), var(var){};
     
 };
 
@@ -45,7 +46,7 @@ public:
     /* Maketable makes a table which points to it's parent */
     Table* makeGlob();
     Table *makeTable(Table *parent, bool iswhile);
-    void insert(Table *table, const std::string& name, type_enum type, int offset, bool isfunc = false);
+    void insert(Table *table, const std::string& name, type_enum type, int offset, std::string var, bool isfunc = false);
     void addFunction(Table *table, const std::string& name, type_enum type, int offset);
     bool isFirstNoneParamInCurScope(Table* table);
     void push_t(Table& table);
@@ -64,6 +65,7 @@ public:
     bool inScopeWhile(Table *table);
     bool checkSamefunctionReturnType(type_enum type, bool is_void);
     type_enum getTypeByName(const std::string& name);
+    int getOffsetByName(const std::string& name);
     bool isFunctionAlreadyDecInScope(const std::string& name);
     void isMainExist();
     

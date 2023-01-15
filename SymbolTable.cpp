@@ -10,9 +10,9 @@ Table* SymbolTable::makeGlob() {
     Table *new_table = this->makeTable(nullptr, false);
     this->tables.push(new_table);
     /* Add print and printi functions */
-    this->insert(this->tables.top(), "print", Void_t, NO_OFFSET, true);//chane to void type
+    this->insert(this->tables.top(), "print", Void_t, NO_OFFSET, "need_var_name" ,true);//chane to void type
     this->tables.top()->entry_list.back()->argtypes.push_back("STRING");
-    this->insert(this->tables.top(), "printi", Void_t, NO_OFFSET, true);
+    this->insert(this->tables.top(), "printi", Void_t, NO_OFFSET, "need_var_name", true);
     this->tables.top()->entry_list.back()->argtypes.push_back("INT");
     return new_table;
 }
@@ -47,11 +47,11 @@ Table* SymbolTable::makeTable(Table* parent, bool iswhile) {
     return table;
 }
 
-void SymbolTable::insert(Table *table, const std::string& name, type_enum type, int offset, bool isfunc) {
+void SymbolTable::insert(Table *table, const std::string& name, type_enum type, int offset, std::string var,  bool isfunc) {
     if (!isfunc && offset > 0 && this->isFirstNoneParamInCurScope(table)) {
         offset--;
         }
-    TableEntry *new_entry = new TableEntry(name, type, offset, isfunc);
+    TableEntry *new_entry = new TableEntry(name, type, offset, var, isfunc);
     table->insert(new_entry);
     this->offsets.push(offset);
 }
@@ -65,14 +65,14 @@ bool SymbolTable::isFirstNoneParamInCurScope(Table* table) {
 
 void SymbolTable::addFunction(Table *table, const std::string& name, type_enum type, int offset)
 {
-    TableEntry *new_entry = new TableEntry(name, type, offset, true);
+    TableEntry *new_entry = new TableEntry(name, type, offset, "no_var",  true);
     table->parent->insert(new_entry);
 }
 
 void SymbolTable::addFunctionParam(const FormalDecl_c& decl, int offset) {
     // while entering function params, the top of the parent table is the symbol of the funciton itself
     TableEntry *function_sym = this->tables.top()->parent->entry_list.back();
-    this->insert(this->tables.top(), decl.name, decl.type, offset);
+    this->insert(this->tables.top(), decl.name, decl.type, offset, decl.var);
     function_sym->argtypes.push_back(typeToString(decl.type));
 }
 
@@ -252,6 +252,20 @@ type_enum SymbolTable::getTypeByName(const std::string& name)
         curr_table = curr_table->parent;
     }
     return None_t;
+}
+
+int SymbolTable::getOffsetByName(const std::string& name)
+{
+    Table* curr_table = this->tables.top();
+    while (curr_table != nullptr) {
+        for (auto & entry : curr_table->entry_list) {
+            if (entry->name == name) {
+                return entry->offset;
+            }
+        }
+        curr_table = curr_table->parent;
+    }
+    return 0;
 }
 
 void Table::insert(TableEntry *entry)

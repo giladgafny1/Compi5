@@ -10,6 +10,7 @@ class CodeGen {
 public:
     int curr_reg_num = 0;
     CodeBuffer *cb;
+    std::string current_var_for_function = "";
     CodeGen(CodeBuffer *cb): cb(cb){};
     /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
@@ -37,5 +38,17 @@ public:
     void handle_false(Exp_c& new_exp);
 
     void handle_parentheses(const Exp_c& exp, Exp_c& new_exp);
+
+    void alloca_ver_for_function();
+
+    void store_var(int offset, const Exp_c& exp);
+
+    std::string initialize_var(int offset, type_enum type);
+
+    std::string load_var(int offset);
+
+    void emit_num_assign(std::string var, std::string value);
+
+
 };
 #endif
