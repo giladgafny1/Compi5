@@ -58,6 +58,7 @@ public:
     InstrList truelist;
     InstrList falselist;
     InstrList nextlist;
+    std::string value;
 
     Exp_c(type_enum type, E_var var) : type(type), var(var){}
     Exp_c(type_enum type) : type(type){}
@@ -75,8 +76,8 @@ class FormalDecl_c : public Node {
 public:
     type_enum type;
     const std::string name;
-
-    FormalDecl_c(type_enum type, const std::string& name) : type(type), name(name) {};
+    E_var var;
+    FormalDecl_c(type_enum type, const std::string& name, E_var var) : type(type), name(name), var(var){};
 };
 
 class FuncDecl_c : public Node{
@@ -85,7 +86,7 @@ class FuncDecl_c : public Node{
     std::string name;
     std::vector<FormalDecl_c*> decls;
     FuncDecl_c(type_enum type , const std::vector<FormalDecl_c*>& decls, std::string name) :
-    type(type), decls(decls), name(name){};
+    type(type), decls(decls), name(name) {};
 };
 
 class FormalsList_c: public Node {
@@ -107,6 +108,7 @@ public:
 class ID_c : public Node {
 public:
     const std::string name;
+    E_var var;
     type_enum type = None_t;
     ID_c(const std::string name) : name(name){};
 };

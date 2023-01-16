@@ -137,10 +137,46 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
     }
 }
 
-void CodeGen::handle_id_to_exp(Exp_c& new_exp) {
-    
+void CodeGen::alloca_ver_for_function()
+{
+    this->current_var_for_function = this->freshVar();
+    cb->emit(this->current_var_for_function + " = alloca i32, i32 50");
 }
 
+void CodeGen::store_var(int offset, const Exp_c& exp)
+{
+    std::string get_ptr = this->freshVar();
+    cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
+    cb->emit("store i32 " + exp.var + ", i32* " + get_ptr);
+}
+
+std::string CodeGen::initialize_var(int offset, type_enum type)
+{
+    std::string new_var = this->freshVar();
+    std::string get_ptr = this->freshVar();
+    if (type != Bool_t)
+        cb->emit(new_var + " = add i32 " + "0" + ", 0");
+    else{
+       // this->handle_false();?
+    }
+    cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
+    cb->emit("store i32 " + new_var + ", i32* " + get_ptr);
+    return new_var;
+}
+
+std::string CodeGen::load_var(int offset)
+{
+    std::string new_var = this->freshVar();
+    std::string get_ptr = this->freshVar();
+    cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
+    cb->emit(new_var + " = load i32, i32* " + get_ptr);
+    return new_var;
+}
+
+void CodeGen::emit_num_assign(std::string var, std::string value)
+{
+    cb->emit(var + " = add i32 " + value + ", 0");
+}
 
 
 
