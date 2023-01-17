@@ -116,27 +116,37 @@ void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     this->cb->bpatch(exp1.truelist, label);
     new_exp.truelist = exp2.truelist;
     new_exp.falselist = this->cb->merge(exp1.falselist, exp2.falselist);
+    /* Exp1 AND Exp2 starts with Exp1*/
+    new_exp.start_label = exp1.start_label;;
 }
 
 void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
     this->cb->bpatch(exp1.falselist, label);
     new_exp.truelist = this->cb->merge(exp1.truelist, exp2.truelist);
     new_exp.falselist = exp2.falselist;
+    /* Exp1 OR Exp2 starts with Exp1*/
+    new_exp.start_label = exp1.start_label;
 }
     
 void CodeGen::handle_not(const Exp_c& exp, Exp_c& new_exp) {
     new_exp.truelist = exp.falselist;
     new_exp.falselist = exp.truelist;
+    /* NOT EXP start with exp */
+    new_exp.start_label = exp.start_label;
 }
 
 void CodeGen::handle_true(Exp_c& new_exp) {
+    std::string label = cb->genLabel();
+    new_exp.start_label = label;
     int next_instr = this->cb->emit("br @");
     new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
-    /* falselist is empty */
-    
+    /* falselist is empty */  
+      
 }
 
 void CodeGen::handle_false(Exp_c& new_exp) {
+    std::string label = cb->genLabel();
+    new_exp.start_label = label;
     int next_instr = this->cb->emit("br @");
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
     /* truelist is empty */
@@ -151,6 +161,15 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
         new_exp.truelist = exp.truelist;
         new_exp.falselist = exp.falselist;
     }
+}
+
+void CodeGen::handle_convert(const Exp_c& exp, Exp_c& new_exp) {
+    /* No need to generate code here since byte and int are both i32 */
+    new_exp.var = exp.var;
+    new_exp.value = exp.value;
+    //TODO: not sure this is right to do with memory
+    new_exp.nextlist = exp.nextlist;
+    new_exp.start_label = exp.start_label;
 }
 
 void CodeGen::alloca_ver_for_function()
