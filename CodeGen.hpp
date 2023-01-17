@@ -58,5 +58,7 @@ public:
     
     /* Returns label of expression*/
     std::string emit_num_assign(Exp_c &new_exp, std::string var, std::string value);
+
+    void deal_with_if(Exp_c& exp, const std::string label);
 };
 #endif

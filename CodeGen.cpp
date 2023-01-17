@@ -198,6 +198,16 @@ std::string CodeGen::emit_num_assign(Exp_c &new_exp, std::string var, std::strin
     return marker;
 }
 
+void CodeGen::deal_with_if(Exp_c& exp, const std::string label)
+{
+    cb->bpatch(exp.truelist, label);
+    std::string next_label = cb->genLabel();
+    cb->emit("br label %" + label);
+    cb->emit(label + ":");
+    cb->bpatch(exp.falselist, next_label);
+    cb->bpatch(exp.nextlist, next_label);
+}
+
 
 
 

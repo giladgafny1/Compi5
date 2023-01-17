@@ -169,8 +169,14 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                     exit(1);
                 }
             }
-            | IF  LPAREN CheckBoolExp RPAREN ScopeOpen Statement ScopeClose
-            | IF LPAREN CheckBoolExp RPAREN ScopeOpen Statement ScopeClose ELSE ScopeOpen Statement ScopeClose
+            | IF  LPAREN CheckBoolExp RPAREN ScopeOpen M Statement
+            {
+                Exp_c* exp1 = (Exp_c*)$3;
+                Marker* marker = (Marker*)$6;
+                code_gen->deal_with_if(*exp1, marker->label);
+                sym_table->closeScope();
+            } 
+            | IF LPAREN CheckBoolExp RPAREN ScopeOpen M Statement  ELSE {} ScopeOpen M Statement {}ScopeClose
             | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen Statement ScopeClose
             | BREAK SC
             {
