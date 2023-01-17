@@ -48,6 +48,8 @@ public:
     /* Both for General Expressions and for booleans*/
     void handle_parentheses(const Exp_c& exp, Exp_c& new_exp);
 
+    void handle_convert(const Exp_c& exp, Exp_c& new_exp);
+
     void alloca_ver_for_function();
 
     void store_var(int offset, const Exp_c& exp);

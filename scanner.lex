@@ -37,7 +37,8 @@ relop (<|>|<=|>=)
 equal_relop (==|!=)
 plus (\+)
 minus (\-)
-mult_div ([\*\/])
+mult (\*)
+div(\/)
 comment (\/\/[^\r\n]*[\r|\n|\r\n]?)
 digit ([0-9])
 letter ([a-zA-Z])
@@ -76,7 +77,8 @@ b return  B;
 {equal_relop} return EQUAL_RELOP;
 {plus} return PLUS;
 {minus} return MINUS;
-{mult_div} return MULT_DIV;
+{mult} return MULT;
+{div} return DIV;
 {num} {Num_c* num = new Num_c(yytext); yylval = (Node*)num; return NUM;}
 {id} {ID_c* id = new ID_c(yytext); yylval = (Node*)id; return ID;}
 {string} return STRING;

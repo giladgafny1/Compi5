@@ -33,7 +33,8 @@ CodeGen *code_gen;
 %nonassoc RBRACE
 %left EQUAL_RELOP
 %left RELOP
-%left MULT_DIV
+%left MULT
+%left DIV
 %left PLUS
 %left MINUS
 %right NOT
@@ -262,8 +263,7 @@ Exp : LPAREN Exp RPAREN {
             errorMismatch(yylineno);
             exit(1);
         }
-        E_var var = code_gen->freshVar();
-        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3));
         Exp_c* new_exp = (Exp_c*)$$;
         //check_types
         code_gen->emit_binop(*exp1, *exp2, *new_exp, "+");
@@ -278,17 +278,35 @@ Exp : LPAREN Exp RPAREN {
             exit(1);
         }
         E_var var = code_gen->freshVar();
-        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3));
+        Exp_c* new_exp = (Exp_c*)$$;
+        code_gen->emit_binop(*exp1, *exp2, *new_exp, "-");
     }
-    | Exp MULT_DIV Exp
+    | Exp MULT Exp
     {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
         if(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3) == None_t)
         {
             errorMismatch(yylineno);
             exit(1);
         }
-        E_var var = code_gen->freshVar();
-        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3), var);
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3));
+        Exp_c* new_exp = (Exp_c*)$$;
+        code_gen->emit_binop(*exp1, *exp2, *new_exp, "*");
+    }
+    |Exp DIV Exp 
+    {
+        Exp_c* exp1 = (Exp_c*)$1;
+        Exp_c* exp2 = (Exp_c*)$3;
+        if(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3) == None_t)
+        {
+            errorMismatch(yylineno);
+            exit(1);
+        }
+        $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3));
+        Exp_c* new_exp = (Exp_c*)$$;
+        code_gen->emit_binop(*exp1, *exp2, *new_exp, "/");
     }
     | ID        {ID_c* id = (ID_c*)($1);
                 if(!sym_table->isDec(id->name, false)) {
@@ -395,10 +413,9 @@ Exp : LPAREN Exp RPAREN {
             exit(1);
 
         }
-        else {
-            E_var var = code_gen->freshVar();
-            $$ = new Exp_c(Bool_t, var);
-        }
+        $$ = new Exp_c(Bool_t);
+        Exp_c* new_exp = (Exp_c*)$$;
+        //code_gen->emit_relop(*exp1, *exp2, *new_exp);
     }
     | Exp EQUAL_RELOP Exp
     {
@@ -410,24 +427,25 @@ Exp : LPAREN Exp RPAREN {
             exit(1);
 
         }
-        else {
-            E_var var = code_gen->freshVar();
-           $$ = new Exp_c(Bool_t, var);
-           }
+        $$ = new Exp_c(Bool_t);
+        Exp_c* new_exp = (Exp_c*)$$;
+        //code_gen->emit_relop(*exp1, *exp2, *new_exp);
     }
     | LPAREN Type RPAREN Exp
     {
         Type_c* type = (Type_c*)$2;
         Exp_c* exp = (Exp_c*)$4;
         if(checkAssigment(type->type , *exp) != None_t) {
-            E_var var = code_gen->freshVar();
-            $$ = new Exp_c(type->type, var);
+            $$ = new Exp_c(type->type);
+            Exp_c* new_exp = (Exp_c*)$$;
+            code_gen->handle_convert(*exp, *new_exp);
         }
         else
         {
             errorMismatch(yylineno);
             exit(1);
         }
+
     }
 M       :   /* Epsilon */ {$$ = new Marker(code_gen->cb->genLabel());}
 ScopeOpen : /* Epsilon */ {
