@@ -309,7 +309,7 @@ Exp : LPAREN Exp RPAREN {
             Num_c* num = (Num_c*)($1);
             Exp_c* new_exp = (Exp_c*)$$;
             new_exp->value = num->num_str;
-            code_gen->emit_num_assign(new_exp->var, num->num_str);
+            new_exp->start_label = code_gen->emit_num_assign(*new_exp, new_exp->var, num->num_str);
             //code_gen->cb->emit(var + " = add i32 " + std::string(num->num_str) + ", 0");
             }
     | NUM B {
@@ -323,7 +323,7 @@ Exp : LPAREN Exp RPAREN {
         $$ = new Exp_c(Byte_t, code_gen->freshVar());
         Exp_c* new_exp = (Exp_c*)$$;
         new_exp->value = num->num_str;
-        code_gen->emit_num_assign(new_exp->var, num->num_str);
+        new_exp->start_label = code_gen->emit_num_assign(*new_exp, new_exp->var, num->num_str);
     }
     | STRING    {
                 $$ = new Exp_c(String_t, code_gen->freshVar());}

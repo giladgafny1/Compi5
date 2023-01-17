@@ -40,8 +40,10 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
         default:
             break;
     }
+    std::string binop_start_label = this->cb->genLabel();
+    /* nextlist of exp2 is the start of these operations */
+    this->cb->bpatch(exp2.nextlist, binop_start_label);
     this->cb->emit(new_exp.var + " = " + binop_instr + "i32 " + exp1.var + ", " + exp2.var);
-
     /* Check overflow */
     /* No need for Int_t type since already we use i32 in llvm */
     if (new_exp.type == Byte_t) {
@@ -49,6 +51,14 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
         this->cb->emit(new_var + " = " + "and " + "i32 " + new_exp.var + ", " + "255");
         new_exp.var = new_var;
     }
+    /* Entry is exp1 */
+    new_exp.start_label = exp1.start_label;
+    /* nextlist of exp1 is exp2 entry*/
+    this->cb->bpatch(exp1.nextlist, exp2.start_label);
+    /* Create next list fot new exp (aftter the binop is done) */
+    int next_instr = this->cb->emit("br @");
+    new_exp.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
+
 }
 
 void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text) {
@@ -86,13 +96,19 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
             relop_instr = "u" + relop_instr;
     }
 
-    /* Generating a var here (and not in parser), becuase not all relops need a var */
+    std::string relop_start_label = this->cb->genLabel();
+    /* nextlist of exp2 is the start of these operations */
     E_var var = this->freshVar();
     this->cb->emit(var + " = " + "icmp " + relop_instr + " i32 " + exp1.var + ", " + exp2.var);
     new_exp.var = var;
     int next_instr = this->cb->emit("br i1 " + var + ", label @, label @");
     new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, SECOND));
+    /* Entry is exp1 */
+    new_exp.start_label = exp1.start_label;
+    /* nextlist of exp1 is exp2 entry*/
+    this->cb->bpatch(exp1.nextlist, exp2.start_label);
+    /* No need for next list here, since anyway this block ends with a branch */
 }
 
 void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
@@ -173,9 +189,13 @@ std::string CodeGen::load_var(int offset)
     return new_var;
 }
 
-void CodeGen::emit_num_assign(std::string var, std::string value)
+std::string CodeGen::emit_num_assign(Exp_c &new_exp, std::string var, std::string value)
 {
+    std::string marker = cb->genLabel();
     cb->emit(var + " = add i32 " + value + ", 0");
+    int nextinstr = cb->emit("br @");
+    new_exp.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(nextinstr, FIRST));
+    return marker;
 }
 
 

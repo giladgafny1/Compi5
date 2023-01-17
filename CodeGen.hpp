@@ -23,6 +23,8 @@ public:
      */
     int allocStack(int var_size);
 
+    void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
+
     /* Boolean handling functions */
     /** 
      * Emit relop function should be called only when we must use a bool variable:
@@ -46,13 +48,6 @@ public:
     /* Both for General Expressions and for booleans*/
     void handle_parentheses(const Exp_c& exp, Exp_c& new_exp);
 
-<<<<<<< HEAD
-    /* Expressions handling function */
-
-    void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
-
-    void handle_id_to_exp(Exp_c& new_exp);
-=======
     void alloca_ver_for_function();
 
     void store_var(int offset, const Exp_c& exp);
@@ -60,10 +55,8 @@ public:
     std::string initialize_var(int offset, type_enum type);
 
     std::string load_var(int offset);
-
-    void emit_num_assign(std::string var, std::string value);
->>>>>>> 6bb4aae6fd529b5eecd3ab20ef86e95d99ff6f75
-
-
+    
+    /* Returns label of expression*/
+    std::string emit_num_assign(Exp_c &new_exp, std::string var, std::string value);
 };
 #endif
