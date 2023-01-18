@@ -73,8 +73,10 @@ FuncDecl : RetType ID LPAREN Formals {
             }
             sym_table->offsets.pop();
             sym_table->offsets.push(keep_offset);
+            FuncDecl_c* func = (FuncDecl_c*)$$;
+            code_gen->define_function(*func);
             code_gen->alloca_ver_for_function();
-        } RPAREN LBRACE Statements RBRACE {sym_table->function_name_scope= "";sym_table->closeScope();}
+        } RPAREN LBRACE Statements RBRACE {sym_table->function_name_scope= ""; code_gen->function_end(); sym_table->closeScope();}
 RetType : Type {Type_c* type = (Type_c*)$1;
                 $$ = new RetType_c(type->type);}
         |  VOID { $$ = new RetType_c(Void_t);}
@@ -153,6 +155,9 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                 code_gen->store_var(offset, *exp);
             }
             | Call SC 
+            {
+
+            }
             | RETURN SC
             {
                 if(!sym_table->checkSamefunctionReturnType(Void_t, true))
@@ -206,6 +211,8 @@ Call : ID LPAREN ExpList RPAREN
         }
         sym_table->checkFunctionParams(exp_list->expressions, id->name);
         $$ = new Call_c(sym_table->getTypeByName(id->name), id->name);
+        Call_c* new_call = (Call_c*)$$;
+        code_gen->deal_with_call(*new_call, exp_list->expressions);
         }
     | ID LPAREN RPAREN
     {
@@ -217,6 +224,9 @@ Call : ID LPAREN ExpList RPAREN
         }
         sym_table->checkFunctionParams(id->name);
         $$ = new Call_c(sym_table->getTypeByName(id->name), id->name);
+        Call_c* new_call = (Call_c*)$$;
+        std::vector<Exp_c*> expressions;
+        code_gen->deal_with_call(*new_call, expressions);
     }
 ExpList : Exp
         {
@@ -325,8 +335,7 @@ Exp : LPAREN Exp RPAREN {
     | Call
     {
         Call_c* call = (Call_c*)$1;
-        E_var var = code_gen->freshVar();
-        $$ = new Exp_c(call->type, var);
+        $$ = new Exp_c(call->type, call->var);
     }
     | NUM   {
             $$ = new Exp_c(Int_t, code_gen->freshVar()); 

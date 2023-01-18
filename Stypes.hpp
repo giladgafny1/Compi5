@@ -48,6 +48,7 @@ class Call_c : public Node {
 public:
     type_enum type;
     const std::string name;
+    E_var var;
     Call_c(type_enum type1, const std::string name) : type(type1), name(name) {};
 };
 

@@ -8,10 +8,6 @@ std::string CodeGen::freshVar() {
     return var;
 }
 
-int CodeGen::allocStack(int var_size) {
-    
-}
-
 void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text)
 {
     //if (binop_text == "/")
@@ -228,6 +224,44 @@ void CodeGen::deal_with_if(Exp_c& exp, const std::string label)
 }
 
 
+void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
+{
+    call.var = freshVar();
+    std::string args_to_print = "";
+    int i = 0;
+    for (auto &exp : expressions)
+    {
+        args_to_print += "i32 " + exp->var;
+        if(i < expressions.size() - 1)
+            args_to_print+= ", ";
+    }
+    
+    if (call.type == Void_t)
+    {
+        cb->emit("call void @" + call.name + "(" + args_to_print + ")");
+    }
+    else{
+            cb->emit("call i32 @" + call.name + "(" + args_to_print + ")");
+    }
+}
 
+void CodeGen::define_function(FuncDecl_c& func)
+{
+    std::string args_to_print = "";
+    for (auto &decl : func.decls)
+    {
+        args_to_print += "i32 , ";
+    }
+    if (!func.decls.empty())
+        args_to_print.erase(args_to_print.size() -2);
+    
+    cb->emit("define i32 @" + func.name + "(" + args_to_print + "){");
+}
+
+void CodeGen::function_end()
+{
+    cb->emit("ret");
+    cb->emit("}");
+}
 
 

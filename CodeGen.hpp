@@ -21,7 +21,6 @@ public:
      * If bool/byte type, then uses zext instr.
      * Returns offset of allocated var.
      */
-    int allocStack(int var_size);
 
     void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
 
@@ -62,5 +61,13 @@ public:
     std::string emit_num_assign(Exp_c &new_exp, std::string var, std::string value);
 
     void deal_with_if(Exp_c& exp, const std::string label);
+
+    void deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions);
+
+    void define_function(FuncDecl_c& func);
+
+    void function_end();
+
+
 };
 #endif
