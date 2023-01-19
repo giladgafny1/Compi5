@@ -250,21 +250,22 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
     call.start_label = expressions[0]->start_label;
     std::string args_to_print = "";
     int i;
-    for (i = 0; i < expressions.size() - 1; i++)
+    /* Gilad: I think this should be from backwards to start, they said in the order it was written and it is a right recursion (like a stack) */
+    for (i = expressions.size() - 1; i > 0 ; i--)
     {
         args_to_print += "i32 " + expressions[i]->var;
         args_to_print+= ", ";
         /* Untill last Exp: */
-        this->cb->bpatch(expressions[i]->nextlist, expressions[i+1]->start_label);
+        this->cb->bpatch(expressions[i]->nextlist, expressions[i-1]->start_label);
     }
-    /* Last Exp */
-    args_to_print += "i32 " + expressions[i]->var;
-    args_to_print+= ", ";
+
     std::string label = cb->genLabel();
-    cb->bpatch(expressions[i]->nextlist, label);
-    if (!expressions.empty())
-        args_to_print.erase(args_to_print.size() -2);
     
+    if (!expressions.empty()) {
+        /* Last Expression */
+        args_to_print += "i32 " + expressions[0]->var;
+        cb->bpatch(expressions[0]->nextlist, label);
+    }
     if (call.type == Void_t)
     {
         cb->emit("call void @" + call.name + "(" + args_to_print + ")");
