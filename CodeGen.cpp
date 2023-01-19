@@ -187,16 +187,6 @@ void CodeGen::handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_fals
     new_exp.nextlist = cb->merge(if_true_exp.nextlist, if_false_exp.nextlist);
 }
 
-void CodeGen::hanlde_explist(Exp_c& exp, ExpList_c& exp_list, ExpList_c& new_exp_list)
-{
-    
-}
-
-void CodeGen::hanlde_explist(Exp_c& exp, ExpList_c& new_exp_list)
-{
-    new_exp_list.
-}
-
 void CodeGen::alloca_ver_for_function()
 {
     this->current_var_for_function = this->freshVar();

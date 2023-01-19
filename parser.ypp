@@ -287,7 +287,7 @@ Exp : LPAREN Exp RPAREN {
             E_var var = code_gen->freshVar();
             $$ = new Exp_c(checkSameTypeExp(*exp1, *exp3), var);
             Exp_c* new_exp = (Exp_c*)$$;
-            code_gen->handle_trenary()   
+            code_gen->handle_trenary(*exp1, *exp2, *exp3, *new_exp);
         }
     }
     %prec IF
