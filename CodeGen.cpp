@@ -57,7 +57,8 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
 
 }
 
-void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text) {
+void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text)
+{
     std::string relop_instr = "";
     bool sign;
     if (relop_text == "==") {
@@ -107,16 +108,18 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     /* No need for next list here, since anyway this block ends with a branch */
 }
 
-void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
+void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label)
+{
     /* Filled according to slide 50 */
     this->cb->bpatch(exp1.truelist, label);
     new_exp.truelist = exp2.truelist;
     new_exp.falselist = this->cb->merge(exp1.falselist, exp2.falselist);
     /* Exp1 AND Exp2 starts with Exp1*/
-    new_exp.start_label = exp1.start_label;;
+    new_exp.start_label = exp1.start_label;
 }
 
-void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label) {
+void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label)
+{
     this->cb->bpatch(exp1.falselist, label);
     new_exp.truelist = this->cb->merge(exp1.truelist, exp2.truelist);
     new_exp.falselist = exp2.falselist;
@@ -124,14 +127,16 @@ void CodeGen::handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, co
     new_exp.start_label = exp1.start_label;
 }
     
-void CodeGen::handle_not(const Exp_c& exp, Exp_c& new_exp) {
+void CodeGen::handle_not(const Exp_c& exp, Exp_c& new_exp)
+{
     new_exp.truelist = exp.falselist;
     new_exp.falselist = exp.truelist;
     /* NOT EXP start with exp */
     new_exp.start_label = exp.start_label;
 }
 
-void CodeGen::handle_true(Exp_c& new_exp) {
+void CodeGen::handle_true(Exp_c& new_exp)
+{
     std::string label = cb->genLabel();
     new_exp.start_label = label;
     int next_instr = this->cb->emit("br @");
@@ -140,7 +145,8 @@ void CodeGen::handle_true(Exp_c& new_exp) {
       
 }
 
-void CodeGen::handle_false(Exp_c& new_exp) {
+void CodeGen::handle_false(Exp_c& new_exp)
+{
     std::string label = cb->genLabel();
     new_exp.start_label = label;
     int next_instr = this->cb->emit("br @");
@@ -148,7 +154,8 @@ void CodeGen::handle_false(Exp_c& new_exp) {
     /* truelist is empty */
 }
 
-void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
+void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp)
+{
     if (exp.type != Bool_t) {
         new_exp.var = exp.var;
     }
@@ -159,13 +166,35 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp) {
     }
 }
 
-void CodeGen::handle_convert(const Exp_c& exp, Exp_c& new_exp) {
+void CodeGen::handle_convert(const Exp_c& exp, Exp_c& new_exp)
+{
     /* No need to generate code here since byte and int are both i32 */
     new_exp.var = exp.var;
     new_exp.value = exp.value;
     //TODO: not sure this is right to do with memory
     new_exp.nextlist = exp.nextlist;
     new_exp.start_label = exp.start_label;
+}
+
+void CodeGen::handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_false_exp, Exp_c& new_exp)
+{
+    /* Set truelist/falselist of bool */
+    this->cb->bpatch(bool_exp.truelist, if_true_exp.start_label);
+    this->cb->bpatch(bool_exp.falselist, if_false_exp.start_label);
+    
+    new_exp.start_label = bool_exp.start_label;
+    /* Both exp will have a same next list (since from both the code jump to the same, not yet set, spot)*/
+    new_exp.nextlist = cb->merge(if_true_exp.nextlist, if_false_exp.nextlist);
+}
+
+void CodeGen::hanlde_explist(Exp_c& exp, ExpList_c& exp_list, ExpList_c& new_exp_list)
+{
+    
+}
+
+void CodeGen::hanlde_explist(Exp_c& exp, ExpList_c& new_exp_list)
+{
+    new_exp_list.
 }
 
 void CodeGen::alloca_ver_for_function()
@@ -223,17 +252,26 @@ void CodeGen::deal_with_if(Exp_c& exp, const std::string label, Statement_c &s)
     cb->bpatch(exp.nextlist, next_label);
 }
 
-
+// Gilad to Mor: i think we need a label here, case Call can be -> to EXP, so I added ot
 void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
 {
     call.var = freshVar();
+    /* Call starts with the "calculation" of it's first parameter */
+    call.start_label = expressions[0]->start_label;
     std::string args_to_print = "";
-    int i = 0;
-    for (auto &exp : expressions)
+    int i;
+    for (i = 0; i < expressions.size() - 1; i++)
     {
-        args_to_print += "i32 " + exp->var;
+        args_to_print += "i32 " + expressions[i]->var;
         args_to_print+= ", ";
+        /* Untill last Exp: */
+        this->cb->bpatch(expressions[i]->nextlist, expressions[i+1]->start_label);
     }
+    /* Last Exp */
+    args_to_print += "i32 " + expressions[i]->var;
+    args_to_print+= ", ";
+    std::string label = cb->genLabel();
+    cb->bpatch(expressions[i]->nextlist, label);
     if (!expressions.empty())
         args_to_print.erase(args_to_print.size() -2);
     
@@ -244,6 +282,9 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
     else{
             cb->emit("call i32 @" + call.name + "(" + args_to_print + ")");
     }
+    /* Gilad: Still not sure if this is needed here, depands on how is return handled */
+    int address = cb->emit("br @");
+    call.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
 }
 
 void CodeGen::define_function(FuncDecl_c& func)

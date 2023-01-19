@@ -73,8 +73,8 @@ b return  B;
 {lbrace} return LBRACE;
 {rbrace} return RBRACE;
 {assign} return ASSIGN;
-{relop} return RELOP;
-{equal_relop} return EQUAL_RELOP;
+{relop}  {Relop_c* relop = new Relop_c(yytext); yylval = (Node*)relop; return RELOP;}
+{equal_relop} {Relop_c* relop = new Relop_c(yytext); yylval = (Node*)relop; return EQUAL_RELOP;}
 {plus} return PLUS;
 {minus} return MINUS;
 {mult} return MULT;

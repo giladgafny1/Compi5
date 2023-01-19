@@ -244,19 +244,22 @@ Call : ID LPAREN ExpList RPAREN
         std::vector<Exp_c*> expressions;
         code_gen->deal_with_call(*new_call, expressions);
     }
+/* First Exp in the list */
 ExpList : Exp
         {
             Exp_c* exp1 = (Exp_c*)$1;
             std::vector<Exp_c*> expressions;
             expressions.push_back(exp1);
             $$ = new ExpList_c(expressions);
+            ExpList_c* new_exp_list = (ExpList_c*)$$;
         }
         | Exp COMMA ExpList
         {
             Exp_c* exp1 = (Exp_c*)$1;
             ExpList_c* exp_list = (ExpList_c*)$3;
             exp_list->expressions.push_back(exp1);
-            $$ = new ExpList_c(exp_list->expressions);  
+            $$ = new ExpList_c(exp_list->expressions);
+            ExpList_c* new_exp_list = (ExpList_c*)$$;
         }
 Type : INT  {$$ = new Type_c(Int_t);}
         | BYTE {$$ = new Type_c(Byte_t);}
@@ -282,7 +285,9 @@ Exp : LPAREN Exp RPAREN {
         else
         {
             E_var var = code_gen->freshVar();
-            $$ = new Exp_c(checkSameTypeExp(*exp1, *exp3), var);   
+            $$ = new Exp_c(checkSameTypeExp(*exp1, *exp3), var);
+            Exp_c* new_exp = (Exp_c*)$$;
+            code_gen->handle_trenary()   
         }
     }
     %prec IF
@@ -435,7 +440,6 @@ Exp : LPAREN Exp RPAREN {
                     }
 
     | Exp RELOP Exp
-    
     {
         Exp_c* exp1 = (Exp_c*)$1;
         Exp_c* exp2 = (Exp_c*)$3;
@@ -447,7 +451,8 @@ Exp : LPAREN Exp RPAREN {
         }
         $$ = new Exp_c(Bool_t);
         Exp_c* new_exp = (Exp_c*)$$;
-        //code_gen->emit_relop(*exp1, *exp2, *new_exp);
+        Relop_c* relop = (Relop_c*)$2;
+        code_gen->emit_relop(*exp1, *exp2, *new_exp, relop->relop_txt);
     }
     | Exp EQUAL_RELOP Exp
     {
@@ -461,7 +466,8 @@ Exp : LPAREN Exp RPAREN {
         }
         $$ = new Exp_c(Bool_t);
         Exp_c* new_exp = (Exp_c*)$$;
-        //code_gen->emit_relop(*exp1, *exp2, *new_exp);
+        Relop_c* relop = (Relop_c*)$2;
+        code_gen->emit_relop(*exp1, *exp2, *new_exp, relop->relop_txt);
     }
     | LPAREN Type RPAREN Exp
     {

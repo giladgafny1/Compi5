@@ -49,6 +49,12 @@ public:
 
     void handle_convert(const Exp_c& exp, Exp_c& new_exp);
 
+    void handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_false_exp, Exp_c& new_exp);
+
+    void hanlde_explist(Exp_c& exp, ExpList_c& exp_list, ExpList_c& new_exp_list);
+
+    void hanlde_explist(Exp_c& exp, ExpList_c& new_exp_list);
+
     void alloca_ver_for_function();
 
     void store_var(int offset, const Exp_c& exp);

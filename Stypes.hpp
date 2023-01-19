@@ -49,6 +49,7 @@ public:
     type_enum type;
     const std::string name;
     E_var var;
+    std::string start_label;
     InstrList truelist;
     InstrList falselist;
     InstrList nextlist;
@@ -73,7 +74,6 @@ public:
 class ExpList_c : public Node {
 public:
     std::vector<Exp_c*> expressions;
-
     ExpList_c(const std::vector<Exp_c*>& expressions) : expressions(expressions) {};
 };
 
@@ -108,7 +108,11 @@ public:
     Formals_c(const std::vector<FormalDecl_c*>& decls) : decls(decls) {};
 };
 
-
+class Relop_c : public Node {
+public:
+    const std::string relop_txt;
+    Relop_c(const std::string relop_txt) : relop_txt(relop_txt){};
+};
 
 class ID_c : public Node {
 public:
