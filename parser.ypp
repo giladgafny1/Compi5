@@ -61,6 +61,7 @@ FuncDecl : RetType ID LPAREN Formals {
             $$ = new FuncDecl_c(ret_type->type , formals->decls, id->name);
             sym_table->addFunction(sym_table->tables.top(), id->name, ret_type->type, NO_OFFSET);
             sym_table->function_name_scope= id->name;
+            cout<<id->name<<endl;
             int offset = -1;
             int keep_offset = sym_table->offsets.top();
             for (auto & param : formals->decls) {
@@ -76,7 +77,7 @@ FuncDecl : RetType ID LPAREN Formals {
             FuncDecl_c* func = (FuncDecl_c*)$$;
             code_gen->define_function(*func);
             code_gen->alloca_ver_for_function();
-        } RPAREN LBRACE Statements RBRACE {sym_table->function_name_scope= ""; code_gen->function_end(); sym_table->closeScope();}
+        } RPAREN LBRACE Statements RBRACE { cout<<sym_table->function_name_scope<<endl; sym_table->function_name_scope= ""; code_gen->function_end(*(RetType_c*)$1); sym_table->closeScope();}
 RetType : Type {Type_c* type = (Type_c*)$1;
                 $$ = new RetType_c(type->type);}
         |  VOID { $$ = new RetType_c(Void_t);}
@@ -165,6 +166,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                     errorMismatch(yylineno);
                     exit(1);
                 }
+                code_gen->deal_with_return();
             }
             | RETURN Exp SC
             {
@@ -174,16 +176,30 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                     errorMismatch(yylineno);
                     exit(1);
                 }
+                code_gen->deal_with_return(*exp1);
             }
             | IF  LPAREN CheckBoolExp RPAREN ScopeOpen M Statement
             {
+                cout<<"if"<<endl;
                 Exp_c* exp1 = (Exp_c*)$3;
                 Marker* marker = (Marker*)$6;
-                code_gen->deal_with_if(*exp1, marker->label);
+                Statement_c* s = (Statement_c*)$6;
+                code_gen->deal_with_if(*exp1, marker->label, *s);
+                cout<<"here"<<endl;
                 sym_table->closeScope();
+                cout<<"close"<<endl;
             } 
-            | IF LPAREN CheckBoolExp RPAREN ScopeOpen M Statement  ELSE {} ScopeOpen M Statement {}ScopeClose
-            | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen Statement ScopeClose
+            | IF LPAREN CheckBoolExp RPAREN ScopeOpen M Statement  ELSE {sym_table->closeScope(); code_gen->deal_with_else(*(Exp_c*)$3); } ScopeOpen M Statement {
+                code_gen->end_else_if(*(Exp_c*)$3, *(Statement_c*)$7, *(Statement_c*)$11, *(Marker*)$6, *(Marker*)$10);
+            }ScopeClose
+            | WHILE LPAREN M CheckBoolExp RPAREN ScopeWhileOpen M Statement
+            {
+                Exp_c* exp1 = (Exp_c*)$4;
+                Marker* marker_exp = (Marker*)$3;
+                Marker* marker_s = (Marker*)$7;
+                Statement_c* s = (Statement_c*)$7;
+                code_gen->deal_with_while(*exp1, *marker_exp, *marker_s, *s);
+            } ScopeClose
             | BREAK SC
             {
                 if(!sym_table->inScopeWhile(sym_table->tables.top()))
@@ -336,6 +352,7 @@ Exp : LPAREN Exp RPAREN {
     {
         Call_c* call = (Call_c*)$1;
         $$ = new Exp_c(call->type, call->var);
+        merge_lists(*(Exp_c*)$$, *call);
     }
     | NUM   {
             $$ = new Exp_c(Int_t, code_gen->freshVar()); 

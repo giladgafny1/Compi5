@@ -213,12 +213,12 @@ std::string CodeGen::emit_num_assign(Exp_c &new_exp, std::string var, std::strin
     return marker;
 }
 
-void CodeGen::deal_with_if(Exp_c& exp, const std::string label)
+void CodeGen::deal_with_if(Exp_c& exp, const std::string label, Statement_c &s)
 {
     cb->bpatch(exp.truelist, label);
     std::string next_label = cb->genLabel();
-    cb->emit("br label %" + label);
-    cb->emit(label + ":");
+    int next_quad = cb->emit("br label @" + next_label);
+    cb->bpatch(cb->merge(exp.falselist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST))), next_label);
     cb->bpatch(exp.falselist, next_label);
     cb->bpatch(exp.nextlist, next_label);
 }
@@ -232,9 +232,10 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
     for (auto &exp : expressions)
     {
         args_to_print += "i32 " + exp->var;
-        if(i < expressions.size() - 1)
-            args_to_print+= ", ";
+        args_to_print+= ", ";
     }
+    if (!expressions.empty())
+        args_to_print.erase(args_to_print.size() -2);
     
     if (call.type == Void_t)
     {
@@ -252,16 +253,58 @@ void CodeGen::define_function(FuncDecl_c& func)
     {
         args_to_print += "i32 , ";
     }
+    cout<<func.name<<endl;
     if (!func.decls.empty())
         args_to_print.erase(args_to_print.size() -2);
-    
+    cout<<func.name + "!"<<endl;
     cb->emit("define i32 @" + func.name + "(" + args_to_print + "){");
 }
 
-void CodeGen::function_end()
+void CodeGen::function_end(RetType_c& type)
 {
-    cb->emit("ret");
+    if(type.type == Void_t)
+        cb->emit("ret void");
+    else
+        cb->emit("ret i32 0");
     cb->emit("}");
 }
 
+void CodeGen::deal_with_return(Exp_c &exp)
+{
+    cb->emit("ret i32" + exp.var);
+}
+
+void CodeGen::deal_with_return()
+{
+    cb->emit("ret void");
+}
+
+void CodeGen::deal_with_break(Statement_c &s)
+{
+    int next_quad = cb->emit("br label @");
+    s.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST));
+}
+
+void CodeGen::deal_with_while(Exp_c &exp, Marker &marker_exp, Marker & marker_s, Statement_c &s)
+{
+    cb->bpatch(s.nextlist, marker_exp.label);
+    cb->bpatch(exp.truelist, marker_s.label);
+    s.nextlist = exp.falselist;
+    cb->emit("br" + marker_exp.label);
+}
+
+void CodeGen::deal_with_else(Exp_c &exp)
+{
+    int next_quad = cb->emit("!br label @");
+    exp.nextlist = cb->merge(exp.nextlist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST)));
+}
+
+void CodeGen::end_else_if(Exp_c &exp, Statement_c &s1, Statement_c &s2, Marker &marker_s1, Marker &marker_s2)
+{
+    cb->bpatch(exp.truelist, marker_s1.label);
+    cb->bpatch(exp.falselist, marker_s2.label);
+    std::string next_label = cb->genLabel();
+    cb->emit("br" + next_label);
+    cb->bpatch(exp.nextlist, next_label);
+}
 

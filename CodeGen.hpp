@@ -60,13 +60,25 @@ public:
     /* Returns label of expression*/
     std::string emit_num_assign(Exp_c &new_exp, std::string var, std::string value);
 
-    void deal_with_if(Exp_c& exp, const std::string label);
+    void deal_with_if(Exp_c& exp, const std::string label, Statement_c &s);
 
     void deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions);
 
     void define_function(FuncDecl_c& func);
 
-    void function_end();
+    void function_end(RetType_c& type);
+
+    void deal_with_return(Exp_c &exp);
+
+    void deal_with_return();
+
+    void deal_with_break(Statement_c &s);
+
+    void deal_with_while(Exp_c &exp, Marker &marker_exp, Marker & marker_s, Statement_c &s);
+
+    void deal_with_else(Exp_c &exp);
+
+    void end_else_if(Exp_c &exp, Statement_c &s1, Statement_c &s2, Marker &marker_s1, Marker &marker_s2);
 
 
 };

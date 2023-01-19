@@ -49,6 +49,9 @@ public:
     type_enum type;
     const std::string name;
     E_var var;
+    InstrList truelist;
+    InstrList falselist;
+    InstrList nextlist;
     Call_c(type_enum type1, const std::string name) : type(type1), name(name) {};
 };
 
@@ -129,6 +132,12 @@ public:
     Marker(const std::string label) : label(label) {}; 
 };
 
+class Statement_c : public Node {
+public:
+    InstrList nextlist;
+    Statement_c();
+};
+
 bool checkBoolExp(Exp_c& exp);
 bool checkBoolExp(Exp_c& exp1, Exp_c& exp2);
 bool checkTypeExp(Type_c& type, Exp_c& exp);
@@ -138,6 +147,8 @@ std::string typeToString(type_enum type);
 type_enum checkNumType(Exp_c& exp1, Exp_c& exp2);
 type_enum checkSameTypeExp(Exp_c& exp1 , Exp_c& exp2);
 type_enum checkAssigment(type_enum type, Exp_c& exp1);
+
+void merge_lists(Exp_c& exp, Call_c& call);
 
 
 
