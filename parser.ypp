@@ -215,6 +215,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
             {
                 cout<<"right here"<<endl;
                 code_gen->end_while(*(Exp_c*)$4, *(Marker*)$7, *(Statement_c*)$8);
+                code_gen->cb->printCodeBuffer();
             } ScopeClose
             | BREAK SC
             {
@@ -385,7 +386,6 @@ Exp : LPAREN Exp RPAREN {
             Exp_c* new_exp = (Exp_c*)$$;
             new_exp->value = num->num_str;
             new_exp->start_label = code_gen->emit_num_assign(*new_exp, new_exp->var, num->num_str);
-            //code_gen->cb->emit(var + " = add i32 " + std::string(num->num_str) + ", 0");
             }
     | NUM B {
         Num_c* num = (Num_c*)$1;

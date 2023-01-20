@@ -248,7 +248,6 @@ void CodeGen::deal_with_if(Exp_c& exp, const std::string label, Statement_c &s)
     std::string next_label = cb->genLabel();
     //cb->bpatch(cb->merge(exp.falselist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST))), next_label);
     cb->bpatch(exp.falselist, next_label);
-    cb->bpatch(exp.nextlist, next_label);
 }
 
 // Gilad to Mor: i think we need a label here, case Call can be -> to EXP, so I added ot
@@ -350,7 +349,8 @@ void CodeGen::deal_with_break(Statement_c &s)
 void CodeGen::begin_while()
 {
     std::string start_while = cb->genLabel();
-    cb->emit("br label %" + start_while);
+    // GILAD: % instead of @ (I understand you didn't mean backpatching, but actually the label). but I think this will be an infitite loop so I commented it out
+    //cb->emit("br label %" + start_while);
     this->labels_while.push(start_while);
 }
 
