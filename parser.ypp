@@ -86,11 +86,13 @@ Formals : /* Epsilon */
         | FormalsList 
           {    FormalsList_c* formal_list = (FormalsList_c*)$1;
                 $$ = new Formals_c(formal_list->decls);}
-FormalsList : FormalDecl {FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
+FormalsList : FormalDecl { 
+                            FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
                             std::vector<FormalDecl_c*> vec;
                             vec.insert(vec.begin(), formaldecl);
                             FormalsList_c* formals_list = new FormalsList_c(vec);
-                            $$ = formals_list;}
+                            $$ = formals_list;
+                        }
         | FormalDecl COMMA FormalsList
         {
             FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
@@ -98,17 +100,28 @@ FormalsList : FormalDecl {FormalDecl_c* formaldecl = (FormalDecl_c*)$1;
             formal_list->decls.insert(formal_list->decls.begin(), formaldecl);
             $$ = new FormalsList_c(formal_list->decls);
         }
-FormalDecl : Type ID    {Type_c* type = (Type_c*)$1;
+FormalDecl : Type ID    {
+                        Type_c* type = (Type_c*)$1;
                         ID_c* id = (ID_c*)$2;
                         if (sym_table->isAlreadyDecInScope(id->name)) {
                                 errorDef(yylineno, id->name);
                                 exit(1);
                         }
                         FormalDecl_c* formaldecl = new FormalDecl_c(type->type, id->name, id->var);
-                        $$ = formaldecl;}
-Statements : Statement
-            | Statements Statement
+                        $$ = formaldecl;
+                        }
+Statements : Statement {cout<<"in ght first sts"<<endl;
+     $$ = (Statement_c*)$1;}
+            | Statements Statement 
+            {
+                code_gen->merge_statement_lists(*(Statement_c*)$2, *(Statement_c*)$1);
+                $$ = (Statement_c*)$1;
+                Statement_c* s = (Statement_c*)$$;
+                cout<<"ggg"<<s->nextlist.back().first<<endl;
+            }
 Statement : LBRACE ScopeOpen Statements RBRACE {
+                cout<<"in the WTF"<<endl;
+                $$ = (Statement_c*)$3;
                 sym_table->closeScope();}
             | Type ID SC    {Type_c* type = (Type_c*)$1;
                             ID_c* id = (ID_c*)$2;
@@ -136,7 +149,9 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                 id->type = type->type;
                 id->var = exp->var;
                 exp->value = id->name;
-                code_gen->store_var(sym_table->offsets.top(), *exp);
+                $$ = new Statement_c();
+                Statement_c* s = (Statement_c*)$$;
+                code_gen->store_var(sym_table->offsets.top(), *exp, *s);
                 }
             | ID ASSIGN Exp SC
             {
@@ -153,11 +168,15 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                 }
                 exp->value = id->name;
                 int offset = sym_table->getOffsetByName(id->name);
-                code_gen->store_var(offset, *exp);
+                $$ = new Statement_c();
+                Statement_c* s = (Statement_c*)$$;
+                code_gen->store_var(offset, *exp, *s);
             }
             | Call SC 
             {
-
+                $$ = new Statement_c();
+                Statement_c* s = (Statement_c*)$$;
+                code_gen->call_as_statement(*(Call_c*)$1, *s);
             }
             | RETURN SC
             {
@@ -176,29 +195,26 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                     errorMismatch(yylineno);
                     exit(1);
                 }
-                code_gen->deal_with_return(*exp1);
+                $$ = new Statement_c();
+                Statement_c* s = (Statement_c*)$$;
+                code_gen->deal_with_return(*exp1, *s);
             }
             | IF  LPAREN CheckBoolExp RPAREN ScopeOpen M Statement
             {
-                cout<<"if"<<endl;
                 Exp_c* exp1 = (Exp_c*)$3;
                 Marker* marker = (Marker*)$6;
                 Statement_c* s = (Statement_c*)$6;
+                cout<<marker->label<<endl;
                 code_gen->deal_with_if(*exp1, marker->label, *s);
-                cout<<"here"<<endl;
                 sym_table->closeScope();
-                cout<<"close"<<endl;
             } 
             | IF LPAREN CheckBoolExp RPAREN ScopeOpen M Statement  ELSE {sym_table->closeScope(); code_gen->deal_with_else(*(Exp_c*)$3); } ScopeOpen M Statement {
-                code_gen->end_else_if(*(Exp_c*)$3, *(Statement_c*)$7, *(Statement_c*)$11, *(Marker*)$6, *(Marker*)$10);
+                code_gen->end_else_if(*(Exp_c*)$3, *(Statement_c*)$7, *(Statement_c*)$12, *(Marker*)$6, *(Marker*)$11);
             }ScopeClose
-            | WHILE LPAREN M CheckBoolExp RPAREN ScopeWhileOpen M Statement
+            | WHILE LPAREN {code_gen->begin_while();} CheckBoolExp RPAREN ScopeWhileOpen M Statement
             {
-                Exp_c* exp1 = (Exp_c*)$4;
-                Marker* marker_exp = (Marker*)$3;
-                Marker* marker_s = (Marker*)$7;
-                Statement_c* s = (Statement_c*)$7;
-                code_gen->deal_with_while(*exp1, *marker_exp, *marker_s, *s);
+                cout<<"right here"<<endl;
+                code_gen->end_while(*(Exp_c*)$4, *(Marker*)$7, *(Statement_c*)$8);
             } ScopeClose
             | BREAK SC
             {
@@ -207,6 +223,9 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
                     errorUnexpectedBreak(yylineno);
                     exit(1);
                 }
+                $$ = new Statement_c();
+                Statement_c* s = (Statement_c*)$$;
+                code_gen->deal_with_break(*s);
             }
             | CONTINUE SC
             {
@@ -241,8 +260,7 @@ Call : ID LPAREN ExpList RPAREN
         sym_table->checkFunctionParams(id->name);
         $$ = new Call_c(sym_table->getTypeByName(id->name), id->name);
         Call_c* new_call = (Call_c*)$$;
-        std::vector<Exp_c*> expressions;
-        code_gen->deal_with_call(*new_call, expressions);
+        code_gen->deal_with_call(*new_call);
     }
 /* First Exp in the list */
 ExpList : Exp
@@ -351,7 +369,9 @@ Exp : LPAREN Exp RPAREN {
                         exit(1);
                 }
                 int offset = sym_table->getOffsetByName(id->name);
-                $$ = new Exp_c(sym_table->getTypeByName(id->name), code_gen->load_var(offset));
+                $$ = new Exp_c(sym_table->getTypeByName(id->name));
+                Exp_c* exp = (Exp_c*)$$;
+                code_gen->load_var(*exp, offset);
                 }
     | Call
     {
@@ -485,7 +505,9 @@ Exp : LPAREN Exp RPAREN {
         }
 
     }
-M       :   /* Epsilon */ {$$ = new Marker(code_gen->cb->genLabel());}
+M       :   /* Epsilon */ {$$ = new Marker(code_gen->cb->genLabel());
+                            Marker* m = (Marker*)$$;
+                            m->print_m();}
 ScopeOpen : /* Epsilon */ {
                             sym_table->newScope(false);}
 ScopeWhileOpen : /* Epsilon */ {

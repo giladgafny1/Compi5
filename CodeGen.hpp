@@ -5,12 +5,15 @@
 #include <string>
 #include "bp.hpp"
 #include "Stypes.hpp"
+#include "stack"
 
 class CodeGen {
 public:
     int curr_reg_num = 0;
     CodeBuffer *cb;
     std::string current_var_for_function = "";
+    std::stack<std::string> labels_while; 
+
     CodeGen(CodeBuffer *cb): cb(cb){};
     /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
@@ -53,11 +56,11 @@ public:
 
     void alloca_ver_for_function();
 
-    void store_var(int offset, const Exp_c& exp);
+    void store_var(int offset, const Exp_c& exp, Statement_c &s);
 
     std::string initialize_var(int offset, type_enum type);
 
-    std::string load_var(int offset);
+    std::string load_var(Exp_c& exp, int offset);
     
     /* Returns label of expression*/
     std::string emit_num_assign(Exp_c &new_exp, std::string var, std::string value);
@@ -66,22 +69,28 @@ public:
 
     void deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions);
 
+    void deal_with_call(Call_c& call);
+
     void define_function(FuncDecl_c& func);
 
     void function_end(RetType_c& type);
 
-    void deal_with_return(Exp_c &exp);
+    void deal_with_return(Exp_c &exp, Statement_c &s);
 
     void deal_with_return();
 
     void deal_with_break(Statement_c &s);
 
-    void deal_with_while(Exp_c &exp, Marker &marker_exp, Marker & marker_s, Statement_c &s);
+    void begin_while();
+
+    void end_while(Exp_c &exp, Marker &marker, Statement_c &s);
 
     void deal_with_else(Exp_c &exp);
 
     void end_else_if(Exp_c &exp, Statement_c &s1, Statement_c &s2, Marker &marker_s1, Marker &marker_s2);
 
+    void call_as_statement(Call_c& call, Statement_c &s);
 
+    void merge_statement_lists(Statement_c &s, Statement_c &s_list);
 };
 #endif

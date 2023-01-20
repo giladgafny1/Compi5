@@ -106,6 +106,8 @@ void CodeGen::emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     /* nextlist of exp1 is exp2 entry*/
     this->cb->bpatch(exp1.nextlist, exp2.start_label);
     /* No need for next list here, since anyway this block ends with a branch */
+    /* add by mor */
+    cb->bpatch(exp2.nextlist, relop_start_label);
 }
 
 void CodeGen::handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label)
@@ -195,8 +197,10 @@ void CodeGen::alloca_ver_for_function()
     cb->emit(this->current_var_for_function + " = alloca i32, i32 50");
 }
 
-void CodeGen::store_var(int offset, const Exp_c& exp)
+void CodeGen::store_var(int offset, const Exp_c& exp, Statement_c &s)
 {
+    std::string label = cb->genLabel();
+    cb->bpatch(exp.nextlist, label);
     std::string get_ptr = this->freshVar();
     cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
     cb->emit("store i32 " + exp.var + ", i32* " + get_ptr);
@@ -216,12 +220,16 @@ std::string CodeGen::initialize_var(int offset, type_enum type)
     return new_var;
 }
 
-std::string CodeGen::load_var(int offset)
+std::string CodeGen::load_var(Exp_c& exp, int offset)
 {
     std::string new_var = this->freshVar();
     std::string get_ptr = this->freshVar();
+    exp.start_label = cb->genLabel();
     cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
     cb->emit(new_var + " = load i32, i32* " + get_ptr);
+    int nextinstr = cb->emit("br label @");
+    exp.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(nextinstr, FIRST));
+    exp.var = new_var;
     return new_var;
 }
 
@@ -238,8 +246,7 @@ void CodeGen::deal_with_if(Exp_c& exp, const std::string label, Statement_c &s)
 {
     cb->bpatch(exp.truelist, label);
     std::string next_label = cb->genLabel();
-    int next_quad = cb->emit("br label @" + next_label);
-    cb->bpatch(cb->merge(exp.falselist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST))), next_label);
+    //cb->bpatch(cb->merge(exp.falselist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST))), next_label);
     cb->bpatch(exp.falselist, next_label);
     cb->bpatch(exp.nextlist, next_label);
 }
@@ -273,7 +280,23 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
         cb->emit("call void @" + call.name + "(" + args_to_print + ")");
     }
     else{
-            cb->emit("call i32 @" + call.name + "(" + args_to_print + ")");
+            cb->emit(call.var + " = call i32 @" + call.name + "(" + args_to_print + ")");
+    }
+    int address = cb->emit("br label @");
+    call.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
+}
+
+void CodeGen::deal_with_call(Call_c& call)
+{
+    call.var = freshVar();
+    /* Call starts with the "calculation" of it's first parameter */
+    std::string args_to_print = "";
+    if (call.type == Void_t)
+    {
+        cb->emit("call void @" + call.name + "(" + args_to_print + ")");
+    }
+    else{
+            cb->emit(call.var + "= call i32 @" + call.name + "(" + args_to_print + ")");
     }
     int address = cb->emit("br label @");
     call.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
@@ -302,9 +325,12 @@ void CodeGen::function_end(RetType_c& type)
     cb->emit("}");
 }
 
-void CodeGen::deal_with_return(Exp_c &exp)
+void CodeGen::deal_with_return(Exp_c &exp, Statement_c &s)
 {
-    cb->emit("ret i32" + exp.var);
+    s.nextlist = exp.nextlist;
+    std::string next_label = cb->genLabel();
+    cb->bpatch(s.nextlist, next_label);
+    cb->emit("ret i32 " + exp.var);
 }
 
 void CodeGen::deal_with_return()
@@ -314,21 +340,31 @@ void CodeGen::deal_with_return()
 
 void CodeGen::deal_with_break(Statement_c &s)
 {
-    int next_quad = cb->emit("br label @");
-    s.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST));
+    int next_quad = cb->emit("braa label @");
+    s.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST));
+    cout<<"in break the size is "<< s.nextlist.size()<< endl;
+    cout<<s.nextlist.back().first<<endl;
+    cout<<"noe"<<endl;
 }
 
-void CodeGen::deal_with_while(Exp_c &exp, Marker &marker_exp, Marker & marker_s, Statement_c &s)
+void CodeGen::begin_while()
 {
-    cb->bpatch(s.nextlist, marker_exp.label);
-    cb->bpatch(exp.truelist, marker_s.label);
-    s.nextlist = exp.falselist;
-    cb->emit("br" + marker_exp.label);
+    std::string start_while = cb->genLabel();
+    cb->emit("br label %" + start_while);
+    this->labels_while.push(start_while);
+}
+
+void CodeGen::end_while(Exp_c &exp, Marker &marker, Statement_c &s)
+{
+    cb->bpatch(exp.truelist, marker.label);
+    cb->emit("br label %" + this->labels_while.top());
+    labels_while.pop();
+    cb->bpatch(cb->merge(exp.falselist, s.nextlist), cb->genLabel());
 }
 
 void CodeGen::deal_with_else(Exp_c &exp)
 {
-    int next_quad = cb->emit("!br label @");
+    int next_quad = cb->emit("else br label @");
     exp.nextlist = cb->merge(exp.nextlist, cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST)));
 }
 
@@ -337,7 +373,18 @@ void CodeGen::end_else_if(Exp_c &exp, Statement_c &s1, Statement_c &s2, Marker &
     cb->bpatch(exp.truelist, marker_s1.label);
     cb->bpatch(exp.falselist, marker_s2.label);
     std::string next_label = cb->genLabel();
-    cb->emit("br" + next_label);
     cb->bpatch(exp.nextlist, next_label);
 }
 
+void CodeGen::call_as_statement(Call_c& call, Statement_c &s)
+{
+    s.nextlist = call.nextlist;
+    std::string next_label = cb->genLabel();
+    cb->bpatch(s.nextlist, next_label);
+}
+
+ void CodeGen::merge_statement_lists(Statement_c &s, Statement_c &s_list)
+ {
+    cout<<"in merge now"<<endl;
+    s_list.nextlist = cb->merge(s.nextlist, s_list.nextlist);
+ }

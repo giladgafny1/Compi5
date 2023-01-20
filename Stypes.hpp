@@ -134,12 +134,23 @@ public:
     std::string label;
 
     Marker(const std::string label) : label(label) {}; 
+
+    void print_m()
+    {
+        cout<<"this is the label"<<label<<endl;
+    }
 };
 
 class Statement_c : public Node {
 public:
-    InstrList nextlist;
-    Statement_c();
+    InstrList nextlist = {};
+    Statement_c(){};
+};
+
+class Statements_c : public Node {
+public:
+    InstrList nextlist = {};
+    Statements_c(){};
 };
 
 bool checkBoolExp(Exp_c& exp);
