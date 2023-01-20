@@ -36,6 +36,8 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
         default:
             break;
     }
+    E_var new_var = this->freshVar();
+    new_exp.var = new_var;
     std::string binop_start_label = this->cb->genLabel();
     /* nextlist of exp2 is the start of these operations */
     this->cb->bpatch(exp2.nextlist, binop_start_label);
@@ -43,9 +45,7 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     /* Check overflow */
     /* No need for Int_t type since already we use i32 in llvm */
     if (new_exp.type == Byte_t) {
-        E_var new_var = this->freshVar();
         this->cb->emit(new_var + " = " + "and " + "i32 " + new_exp.var + ", " + "255");
-        new_exp.var = new_var;
     }
     /* Entry is exp1 */
     new_exp.start_label = exp1.start_label;
@@ -348,17 +348,17 @@ void CodeGen::deal_with_break(Statement_c &s)
 
 void CodeGen::begin_while()
 {
-    std::string start_while = cb->genLabel();
+    //std::string start_while = cb->genLabel();
     // GILAD: % instead of @ (I understand you didn't mean backpatching, but actually the label). but I think this will be an infitite loop so I commented it out
     //cb->emit("br label %" + start_while);
-    this->labels_while.push(start_while);
+    //this->labels_while.push(start_while);
 }
 
 void CodeGen::end_while(Exp_c &exp, Marker &marker, Statement_c &s)
 {
-    cb->bpatch(exp.truelist, marker.label);
-    cb->emit("br label %" + this->labels_while.top());
-    labels_while.pop();
+    cb->bpatch(exp.truelist, s.start_label);
+    cb->emit("br label %" + exp.start_label);
+    //labels_while.pop();
     cb->bpatch(cb->merge(exp.falselist, s.nextlist), cb->genLabel());
 }
 

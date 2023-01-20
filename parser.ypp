@@ -211,10 +211,10 @@ Statement : LBRACE ScopeOpen Statements RBRACE {
             | IF LPAREN CheckBoolExp RPAREN ScopeOpen M Statement  ELSE {sym_table->closeScope(); code_gen->deal_with_else(*(Exp_c*)$3); } ScopeOpen M Statement {
                 code_gen->end_else_if(*(Exp_c*)$3, *(Statement_c*)$7, *(Statement_c*)$12, *(Marker*)$6, *(Marker*)$11);
             }ScopeClose
-            | WHILE LPAREN {code_gen->begin_while();} CheckBoolExp RPAREN ScopeWhileOpen M Statement
+            | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen M Statement
             {
                 cout<<"right here"<<endl;
-                code_gen->end_while(*(Exp_c*)$4, *(Marker*)$7, *(Statement_c*)$8);
+                code_gen->end_while(*(Exp_c*)$3, *(Marker*)$6, *(Statement_c*)$7);
                 code_gen->cb->printCodeBuffer();
             } ScopeClose
             | BREAK SC
