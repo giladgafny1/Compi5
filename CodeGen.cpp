@@ -247,7 +247,7 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
 {
     call.var = freshVar();
     /* Call starts with the "calculation" of it's first parameter */
-    call.start_label = expressions[0]->start_label;
+    call.start_label = expressions[expressions.size() - 1]->start_label;
     std::string args_to_print = "";
     int i;
     /* Gilad: I think this should be from backwards to start, they said in the order it was written and it is a right recursion (like a stack) */
@@ -273,7 +273,6 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
     else{
             cb->emit("call i32 @" + call.name + "(" + args_to_print + ")");
     }
-    /* Gilad: Still not sure if this is needed here, depands on how is return handled */
     int address = cb->emit("br @");
     call.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
 }
