@@ -52,7 +52,7 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     /* nextlist of exp1 is exp2 entry*/
     this->cb->bpatch(exp1.nextlist, exp2.start_label);
     /* Create next list fot new exp (aftter the binop is done) */
-    int next_instr = this->cb->emit("br @");
+    int next_instr = this->cb->emit("br label @");
     new_exp.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
 
 }
@@ -139,7 +139,7 @@ void CodeGen::handle_true(Exp_c& new_exp)
 {
     std::string label = cb->genLabel();
     new_exp.start_label = label;
-    int next_instr = this->cb->emit("br @");
+    int next_instr = this->cb->emit("br label @");
     new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
     /* falselist is empty */  
       
@@ -149,7 +149,7 @@ void CodeGen::handle_false(Exp_c& new_exp)
 {
     std::string label = cb->genLabel();
     new_exp.start_label = label;
-    int next_instr = this->cb->emit("br @");
+    int next_instr = this->cb->emit("br label @");
     new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
     /* truelist is empty */
 }
@@ -158,9 +158,11 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp)
 {
     if (exp.type != Bool_t) {
         new_exp.var = exp.var;
+        new_exp.nextlist = exp.nextlist;
     }
     else {
         /* Bool type */
+        new_exp.var = exp.var;
         new_exp.truelist = exp.truelist;
         new_exp.falselist = exp.falselist;
     }
@@ -227,7 +229,7 @@ std::string CodeGen::emit_num_assign(Exp_c &new_exp, std::string var, std::strin
 {
     std::string marker = cb->genLabel();
     cb->emit(var + " = add i32 " + value + ", 0");
-    int nextinstr = cb->emit("br @");
+    int nextinstr = cb->emit("br label @");
     new_exp.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(nextinstr, FIRST));
     return marker;
 }
@@ -273,7 +275,7 @@ void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
     else{
             cb->emit("call i32 @" + call.name + "(" + args_to_print + ")");
     }
-    int address = cb->emit("br @");
+    int address = cb->emit("br label @");
     call.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(address, FIRST));
 }
 
