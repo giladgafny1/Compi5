@@ -63,7 +63,7 @@ FuncDecl : RetType ID LPAREN Formals {
             $$ = new FuncDecl_c(ret_type->type , formals->decls, id->name);
             sym_table->addFunction(sym_table->tables.top(), id->name, ret_type->type, NO_OFFSET);
             sym_table->function_name_scope= id->name;
-            cout<<id->name<<endl;
+            //cout<<id->name<<endl;
             int offset = -1;
             int keep_offset = sym_table->offsets.top();
             for (auto & param : formals->decls) {
@@ -81,7 +81,7 @@ FuncDecl : RetType ID LPAREN Formals {
             code_gen->alloca_ver_for_function();
         } RPAREN LBRACE Statements RBRACE 
         {
-             cout<<sym_table->function_name_scope<<endl; sym_table->function_name_scope= ""; code_gen->function_end(*(RetType_c*)$1); sym_table->closeScope();
+            sym_table->function_name_scope= ""; code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$8); sym_table->closeScope();
         }
 RetType : Type {Type_c* type = (Type_c*)$1;
                 $$ = new RetType_c(type->type);}
@@ -120,6 +120,7 @@ Statements : Statement {
                         if (DEBUG)
                             cout<<"in statements first" << endl;
                         Statement_c* s = (Statement_c*)$1;
+                        //cout<<"size of list in sts"<<s->nextlist.size()<<endl;
                         std::vector<Statement_c*> s_list;
                         s_list.push_back(s);
                         $$ = new Statements_c(s_list);
@@ -143,7 +144,8 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                     if (DEBUG)
                         cout<<"in statement_close"<<endl;
                     Statements_c* statements = (Statements_c*)$3;
-                    $$ = new Statement_c;
+                    $$ = new Statement_c();
+                    //cout<<"s list size in parser"<<statements->nextlist.size()<<endl;
                     Statement_c* new_s =(Statement_c*)($$);
                     code_gen->handle_statement_close(*new_s, *statements);
                     if (DEBUG)
@@ -151,6 +153,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                         std::cout << new_s->start_label << " is start label of statement" << endl;
                     }
                     sym_table->closeScope();
+                    cout<<"new s list size in parser"<<new_s->nextlist.size()<<endl;
                 }
             | Type ID SC    {Type_c* type = (Type_c*)$1;
                             ID_c* id = (ID_c*)$2;
@@ -158,7 +161,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                                     errorDef(yylineno, id->name);
                                     exit(1);
                             }
-                            $$ = new Statement_c;
+                            $$ = new Statement_c();
                             id->var = code_gen->initialize_var(*(Statement_c*)$$, sym_table->offsets.top() + 1, id->type);
                             sym_table->insert(sym_table->tables.top(), id->name, type->type, sym_table->offsets.top() + 1, id->var);
                             id->type = type->type;
@@ -181,8 +184,8 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                 exp->value = id->name;
                 $$ = new Statement_c();
                 Statement_c* s = (Statement_c*)$$;
-                if (DEBUG)
-                    std::cout << "started store_var" << endl;
+                //if (DEBUG)
+                std::cout << "started store_var" << endl;
                 code_gen->store_var(sym_table->offsets.top(), *exp, *s);
                 if (DEBUG)
                     std::cout << "finished type id assign exp sc" << endl;
@@ -219,7 +222,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                     errorMismatch(yylineno);
                     exit(1);
                 }
-                $$ = new Statement_c;
+                $$ = new Statement_c();
                 code_gen->deal_with_return(*(Statement_c*)$$);
             }
             | RETURN Exp SC
@@ -236,28 +239,31 @@ Statement : LBRACE ScopeOpen Statements RBRACE
             }
             | IF  LPAREN CheckBoolExp RPAREN ScopeOpen Statement
             {
+                cout<<"in if"<<endl;
                 Exp_c* exp1 = (Exp_c*)$3;
-                Statement_c* s = (Statement_c*)$5;
-                $$ = new Statement_c;
+                Statement_c* s = (Statement_c*)$6;
+                cout<<"s list size in parser"<<s->nextlist.size()<<endl;
+                $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
                 code_gen->deal_with_if(*new_s, *exp1, *s);
                 sym_table->closeScope();
             } 
             | IF LPAREN CheckBoolExp RPAREN ScopeOpen Statement  ELSE {sym_table->closeScope();} ScopeOpen Statement {
-                $$ = new Statement_c;
+                $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
                 //code_gen->deal_with_else(*(Exp_c*)$3); 
                 code_gen->end_else_if(*new_s, *(Exp_c*)$3, *(Statement_c*)$6, *(Statement_c*)$10);
-            }ScopeClose
+                cout<<"in if-else list size in parser"<<new_s->nextlist.size()<<endl;
+                sym_table->closeScope();
+            }
             | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen Statement
             {
-                $$ = new Statement_c;
+                $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
-                std::cout << "Before end_while";
+                std::cout << "Before end_while"<<endl;
                 code_gen->end_while(*new_s, *(Exp_c*)$3, *(Statement_c*)$6);
-                if (DEBUG)
-                    code_gen->cb->printCodeBuffer();
-            } ScopeClose
+                sym_table->closeScope();
+            } 
             | BREAK SC
             {
                 if(!sym_table->inScopeWhile(sym_table->tables.top()))
@@ -276,7 +282,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                     errorUnexpectedContinue(yylineno);
                     exit(1);
                 }
-                $$ = new Statement_c;
+                $$ = new Statement_c();
                 Statement_c* s = (Statement_c*)$$;
                 code_gen->handle_continue(*s);
             }
@@ -557,8 +563,7 @@ M       :   /* Epsilon */ {$$ = new Marker(code_gen->cb->genLabel());
 ScopeOpen : /* Epsilon */ {
                             sym_table->newScope(false);}
 ScopeWhileOpen : /* Epsilon */ {
-                            sym_table->newScope(true);}
-ScopeClose : /* Epsilon */ {sym_table->closeScope();}   
+                            sym_table->newScope(true);}  
 
 CheckBoolExp : Exp {
                 if (!checkBoolExp(*(Exp_c*)$1))

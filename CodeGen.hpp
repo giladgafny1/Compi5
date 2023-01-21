@@ -56,7 +56,7 @@ public:
 
     void alloca_ver_for_function();
 
-    void store_var(int offset, const Exp_c& exp, Statement_c &s);
+    void store_var(int offset, Exp_c& exp, Statement_c &s);
 
     std::string initialize_var(Statement_c &new_s, int offset, type_enum type);
 
@@ -73,7 +73,7 @@ public:
 
     void define_function(FuncDecl_c& func);
 
-    void function_end(RetType_c& type);
+    void function_end(RetType_c& type, Statements_c &s);
 
     void deal_with_return(Exp_c &exp, Statement_c &s);
 
@@ -100,5 +100,8 @@ public:
     void handle_statements(Statements_c &statements, Statement_c &s);
 
     void handle_statement_close(Statement_c &new_s, Statements_c &statements);
+
+    Exp_c* bool_exp(Exp_c &exp);
+
 };
 #endif

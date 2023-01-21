@@ -156,6 +156,7 @@ public:
     InstrList nextlist;
     std::string start_label;
     std::vector<Statement_c*> s_list;
+    InstrList breaklist;
     Statements_c(const std::vector<Statement_c*>& s_list) : s_list(s_list) {};
 };
 
