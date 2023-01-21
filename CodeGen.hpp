@@ -103,5 +103,6 @@ public:
 
     Exp_c* bool_exp(Exp_c &exp);
 
+    void emit_globals();
 };
 #endif

@@ -578,6 +578,7 @@ int main()
 {
     sym_table->makeGlob();
     code_gen = new CodeGen(cb);
+    code_gen->emit_start();
 	yyparse();
 }
 

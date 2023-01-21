@@ -25,7 +25,6 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
             binop_instr = "mul ";
             break;
         case '/':
-            //TODO: casting? I think no need to since we'll keep everything in i32 anyway. And the casting "check" is done in semantic checks. Result will be in new_exp
             if (new_exp.type == Byte_t) {
                 binop_instr = "udiv ";
             }
@@ -41,6 +40,10 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     std::string binop_start_label = this->cb->genLabel();
     /* nextlist of exp2 is the start of these operations */
     this->cb->bpatch(exp2.nextlist, binop_start_label);
+
+    if (binop_text[0] == '/') {
+
+    }
     this->cb->emit(new_exp.var + " = " + binop_instr + "i32 " + exp1.var + ", " + exp2.var);
     /* Check overflow */
     /* No need for Int_t type since already we use i32 in llvm */
@@ -519,3 +522,38 @@ Exp_c* CodeGen::bool_exp(Exp_c &exp) {
     cb->emit(new_exp->var + " = phi i32 [ 1, %" + true_label + "], [0, %" + false_label + "]");
     return new_exp;
 }
+
+void CodeGen::emit_start()
+{
+    cb->emit("declare i32 @printf(i8*, ...)");
+    cb->emit("declare void @exit(i32)");
+    cb->emit("@.int_specifier = constant [4 x i8] c\"%d\\0A\\00\"");
+    cb->emit("@.str_specifier = constant [4 x i8] c\"%s\\0A\\00\"");
+    cb->emit("@.zero_division = constant [23 x i8] c\"Error division by zero\\00\"");
+    cb->emit("");
+    cb->emit("define void @printi(i32) {");
+    cb->emit("  %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0");
+    cb->emit("  call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)");
+    cb->emit("  ret void");
+    cb->emit("}");
+    cb->emit("");
+    cb->emit("define void @print(i8*) {");
+    cb->emit("  %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0");
+    cb->emit("  call i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)");
+    cb->emit("  ret void");
+    cb->emit("}");
+    cb->emit("");
+    cb->emit("define void @division_by_zero(i32) {");
+    cb->emit("  %is_zero = icmp eq i32 %0, 0");
+    cb->emit("  br i1 %is_zero, label %error_label, label %ok_label");
+    cb->emit("  ok_label:");
+    cb->emit("      ret void");
+    cb->emit("  error_label:");
+    cb->emit("      %ptr = getelementptr [23 x i8], [23 x i8]* @.zero_division, i32 0, i32 0");
+    cb->emit("      call void @print(i8* %ptr)");
+    cb->emit("      call void @exit(i32 0)");
+    cb->emit("      ret void");
+    cb->emit("}");
+    cb->emit("");
+}
+
