@@ -1,0 +1,9 @@
+int f() {
+    if (3 < 4){
+        return 2;
+    }
+    else {
+        return 4;
+    }
+
+}

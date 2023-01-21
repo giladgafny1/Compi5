@@ -143,14 +143,20 @@ public:
 
 class Statement_c : public Node {
 public:
-    InstrList nextlist = {};
+    InstrList nextlist;
+    /* Used for break statements in while */
+    InstrList breaklist;
+    std::string start_label;
+    bool was_backpatched = false;
     Statement_c(){};
 };
 
 class Statements_c : public Node {
 public:
-    InstrList nextlist = {};
-    Statements_c(){};
+    InstrList nextlist;
+    std::string start_label;
+    std::vector<Statement_c*> s_list;
+    Statements_c(const std::vector<Statement_c*>& s_list) : s_list(s_list) {};
 };
 
 bool checkBoolExp(Exp_c& exp);
