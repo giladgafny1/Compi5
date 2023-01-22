@@ -1,3 +1,5 @@
+@.var_35 = constant [2 x i8] c"*\00"
+@.var_43 = constant [2 x i8] c"*\00"
 declare i32 @printf(i8*, ...)
 declare void @exit(i32)
 @.int_specifier = constant [4 x i8] c"%d\0A\00"
@@ -28,47 +30,138 @@ define void @division_by_zero(i32) {
       ret void
 }
 
-define void @main(){
+define i32 @fib(i32 ){
 %var0 = alloca i32, i32 50
-br label %label_36
+br label %label_33
 label_33:
-%var1 = add i32 3, 0
-br label %label_48
-label_36:
-%var2 = add i32 4, 0
-br label %label_39
-label_39:
-%var3 = add i32 5, 0
-br label %label_42
-label_42:
-%var4 = icmp slt  i32 %var2, %var3
-br i1 %var4, label %label_33, label %label_45
-label_45:
-%var5 = add i32 9, 0
-br label %label_48
-label_48:
-%var7 = phi i32 [ 1, %label_33], [0, %label_45]
-%var8 = getelementptr i32, i32* %var0, i32 0
-store i32 %var7, i32* %var8
-br label %label_53
-label_53:
-%var10 = getelementptr i32, i32* %var0, i32 0
-%var9 = load i32, i32* %var10
+br label %label_35
+label_35:
+%var1 = add i32 0, 0
+br label %label_38
+label_38:
+%var2 = icmp eq  i32 %0, %var1
+br i1 %var2, label %label_49, label %label_41
+label_41:
+br label %label_43
+label_43:
+%var3 = add i32 1, 0
+br label %label_46
+label_46:
+%var4 = icmp eq  i32 %0, %var3
+br i1 %var4, label %label_49, label %label_55
+label_49:
+%var6 = add i32 1, 0
+br label %label_52
+label_52:
+ret i32 %var6
+br label %label_55
+label_55:
 br label %label_57
 label_57:
-%var11 = add i32 0, 0
+%var7 = add i32 1, 0
 br label %label_60
 label_60:
-call void @division_by_zero(i32 %var11)
-%var12 = sdiv i32 %var9, %var11
+%var9 = sub i32 %0, %var7
+%var10 = and i32 %var9, 255
 br label %label_64
 label_64:
-%var13 = getelementptr i32, i32* %var0, i32 0
-store i32 %var12, i32* %var13
-br label %label_68
-label_68:
-ret void
-br label %label_71
-label_71:
+%var11 = call i32 @fib(i32 %var10)
+br label %label_67
+label_67:
+br label %label_69
+label_69:
+%var12 = add i32 2, 0
+br label %label_72
+label_72:
+%var14 = sub i32 %0, %var12
+%var15 = and i32 %var14, 255
+br label %label_76
+label_76:
+%var16 = call i32 @fib(i32 %var15)
+br label %label_79
+label_79:
+%var17 = add i32 %var11, %var16
+br label %label_82
+label_82:
+ret i32 %var17
+br label %label_85
+label_85:
+ret i32 0
+}
+define void @main(){
+%var18 = alloca i32, i32 50
+br label %label_91
+label_91:
+%var19 = add i32 0, 0
+br label %label_94
+label_94:
+%var20 = getelementptr i32, i32* %var18, i32 0
+store i32 %var19, i32* %var20
+br label %label_98
+label_98:
+%var22 = getelementptr i32, i32* %var18, i32 0
+%var21 = load i32, i32* %var22
+br label %label_102
+label_102:
+%var23 = add i32 10, 0
+br label %label_105
+label_105:
+%var24 = icmp slt  i32 %var21, %var23
+br i1 %var24, label %label_108, label %label_156
+label_108:
+%var26 = getelementptr i32, i32* %var18, i32 0
+%var25 = load i32, i32* %var26
+br label %label_112
+label_112:
+%var27 = call i32 @fib(i32 %var25)
+br label %label_115
+label_115:
+call void @printi(i32 %var27)
+br label %label_118
+label_118:
+%var30 = getelementptr i32, i32* %var18, i32 0
+%var29 = load i32, i32* %var30
+br label %label_122
+label_122:
+%var31 = add i32 1, 0
+br label %label_125
+label_125:
+%var32 = add i32 %var29, %var31
+br label %label_128
+label_128:
+%var33 = add i32 10, 0
+br label %label_131
+label_131:
+%var34 = icmp slt  i32 %var32, %var33
+br i1 %var34, label %label_134, label %label_140
+label_134:
+%.var_35 = getelementptr [2 x i8], [2 x i8]* @.var_35, i32 0, i32 0
+br label %label_137
+label_137:
+call void @print(i8* %.var_35)
+br label %label_140
+label_140:
+%var38 = getelementptr i32, i32* %var18, i32 0
+%var37 = load i32, i32* %var38
+br label %label_144
+label_144:
+%var39 = add i32 1, 0
+br label %label_147
+label_147:
+%var40 = add i32 %var37, %var39
+%var41 = and i32 %var40, 255
+br label %label_151
+label_151:
+%var42 = getelementptr i32, i32* %var18, i32 0
+store i32 %var41, i32* %var42
+br label %label_98
+br label %label_98
+label_156:
+%.var_43 = getelementptr [2 x i8], [2 x i8]* @.var_43, i32 0, i32 0
+br label %label_159
+label_159:
+call void @print(i8* %.var_43)
+br label %label_162
+label_162:
 ret void
 }

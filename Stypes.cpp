@@ -90,4 +90,7 @@ void merge_lists(Exp_c& exp, Call_c& call)
     exp.falselist = call.falselist;
     exp.truelist = call.truelist;
     exp.nextlist = call.nextlist;
+    exp.start_label = call.start_label;
+    exp.value = call.name;
+
 }

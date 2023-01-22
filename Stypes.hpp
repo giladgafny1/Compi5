@@ -120,6 +120,12 @@ public:
     Relop_c(const std::string relop_txt) : relop_txt(relop_txt){};
 };
 
+class String_c : public Node {
+public:
+    const std::string str;
+    String_c(const std::string str) : str(str){};
+};
+
 class ID_c : public Node {
 public:
     const std::string name;

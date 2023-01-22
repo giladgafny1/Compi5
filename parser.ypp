@@ -47,7 +47,7 @@ CodeGen *code_gen;
 %nonassoc END
 
 %%
-Program : Funcs END {sym_table->isMainExist(); sym_table->closeScope();code_gen->cb->printCodeBuffer(); exit(0);}
+Program : Funcs END {sym_table->isMainExist(); sym_table->closeScope();code_gen->cb->printGlobalBuffer(); code_gen->cb->printCodeBuffer(); exit(0);}
 Funcs : /* Epsilon */
         | FuncDecl Funcs
 FuncDecl : RetType ID LPAREN Formals {
@@ -327,6 +327,9 @@ ExpList : Exp
             expressions.push_back(exp1);
             $$ = new ExpList_c(expressions);
             ExpList_c* new_exp_list = (ExpList_c*)$$;
+            if (exp1->type == Bool_t) {
+                code_gen->handle_bool_explist(*exp1);
+            }
         }
         | Exp COMMA ExpList
         {
@@ -460,7 +463,9 @@ Exp : LPAREN Exp RPAREN {
         new_exp->start_label = code_gen->emit_num_assign(*new_exp, new_exp->var, num->num_str);
     }
     | STRING    {
-                $$ = new Exp_c(String_t, code_gen->freshVar());}
+                $$ = new Exp_c(String_t);
+                code_gen->handle_string(*(Exp_c*)$$, *(String_c*)$1);
+                }
     | TRUE  {
             $$ = new Exp_c(Bool_t, code_gen->freshVar());
             Exp_c* new_exp = (Exp_c*)($$);
@@ -484,10 +489,10 @@ Exp : LPAREN Exp RPAREN {
                 Exp_c* exp = (Exp_c*)$1;
                 code_gen->handle_not(*exp, *new_exp);
                 }
-    | Exp AND M Exp {
+    | Exp AND Exp {
                     Exp_c* exp1 = (Exp_c*)$1;
-                    Exp_c* exp2 = (Exp_c*)$4;
-                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$4)) {
+                    Exp_c* exp2 = (Exp_c*)$3;
+                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$3)) {
                         E_var var = code_gen->freshVar();
                         $$ = new Exp_c(Bool_t, var);
                     }  
@@ -497,14 +502,13 @@ Exp : LPAREN Exp RPAREN {
                         exit(1);
                     }
                     Exp_c* exp3 = (Exp_c*)$$;
-                    Marker* marker = (Marker*)$3;
-                    code_gen->handle_and(*exp1, *exp2, *exp3, marker->label);
+                    code_gen->handle_and(*exp1, *exp2, *exp3);
                     }
                     
-    | Exp OR M Exp {
+    | Exp OR Exp {
                     Exp_c* exp1 = (Exp_c*)$1;
-                    Exp_c* exp2 = (Exp_c*)$4;
-                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$4))
+                    Exp_c* exp2 = (Exp_c*)$3;
+                    if (checkBoolExp(*(Exp_c*)$1, *(Exp_c*)$3))
                     {
                         E_var var = code_gen->freshVar();
                         $$ = new Exp_c(Bool_t, var);
@@ -514,8 +518,7 @@ Exp : LPAREN Exp RPAREN {
                         exit(1);
                     }
                     Exp_c* exp3 = (Exp_c*)$$;
-                    Marker* marker = (Marker*)$3;
-                    code_gen->handle_or(*exp1, *exp2, *exp3, marker->label);
+                    code_gen->handle_or(*exp1, *exp2, *exp3);
                     }
 
     | Exp RELOP Exp
@@ -564,9 +567,6 @@ Exp : LPAREN Exp RPAREN {
         }
 
     }
-M       :   /* Epsilon */ { $$ = new Marker(code_gen->cb->genLabel());
-                            Marker* m = (Marker*)$$;
-                            m->print_m();}
 N       :   /* Epsilon */ { int instr = code_gen->cb->emit("br label @");
                             InstrList nextlist = code_gen->cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
                             $$ = new N_Marker(nextlist);

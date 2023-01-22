@@ -19,6 +19,8 @@ public:
     
     std::string freshVar();
 
+    std::string freshVarGlobal();
+
     void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
 
     /* Boolean handling functions */
@@ -31,9 +33,9 @@ public:
      **/
     void emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text);
 
-    void handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label);
+    void handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp);
 
-    void handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string label);
+    void handle_or(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp);
     
     void handle_not(const Exp_c& exp, Exp_c& new_exp);
 
@@ -98,6 +100,10 @@ public:
     Exp_c* bool_exp(Exp_c &exp);
 
     std::string trenary_phi(Exp_c &exp);
+
+    void handle_string(Exp_c &exp, String_c &string);
+
+    void handle_bool_explist(Exp_c &exp);
 
     void emit_start();
 };
