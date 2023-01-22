@@ -78,10 +78,16 @@ FuncDecl : RetType ID LPAREN Formals {
             sym_table->offsets.push(keep_offset);
             FuncDecl_c* func = (FuncDecl_c*)$$;
             code_gen->define_function(*func);
-            code_gen->alloca_ver_for_function();
-        } RPAREN LBRACE Statements RBRACE 
+            code_gen->alloca_ver_for_function(*func);
+            //std::cout  << func->nextlist.back().first << " is it callable! " << endl;
+            //std::cout << func->nextlist.size() << endl;
+            //std::cout << "The address is " << func << endl;
+        } RPAREN LBRACE N Statements RBRACE 
         {
-            sym_table->function_name_scope= ""; code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$8); sym_table->closeScope();
+            sym_table->function_name_scope= "";
+            code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$9, *(N_Marker*)$8); 
+            //code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$8, *(FuncDecl_c*)$$); 
+            sym_table->closeScope();
         }
 RetType : Type {Type_c* type = (Type_c*)$1;
                 $$ = new RetType_c(type->type);}
@@ -135,8 +141,9 @@ Statements : Statement {
                 if (DEBUG)
                         cout<<"in statements recursive" << endl;
                 $$ = (Statements_c*)$1;
-                Statements_c* statements = (Statements_c*)$$;
-                code_gen->handle_statements(*statements, *(Statement_c*)$2);
+                Statements_c* new_statements = (Statements_c*)$$;
+                Statements_c* older_statements = (Statements_c*)$1;
+                code_gen->handle_statements(*new_statements, *(Statement_c*)$2);
                
             }
 Statement : LBRACE ScopeOpen Statements RBRACE 
@@ -557,9 +564,13 @@ Exp : LPAREN Exp RPAREN {
         }
 
     }
-M       :   /* Epsilon */ {$$ = new Marker(code_gen->cb->genLabel());
+M       :   /* Epsilon */ { $$ = new Marker(code_gen->cb->genLabel());
                             Marker* m = (Marker*)$$;
                             m->print_m();}
+N       :   /* Epsilon */ { int instr = code_gen->cb->emit("br label @");
+                            InstrList nextlist = code_gen->cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
+                            $$ = new N_Marker(nextlist);
+                            }
 ScopeOpen : /* Epsilon */ {
                             sym_table->newScope(false);}
 ScopeWhileOpen : /* Epsilon */ {

@@ -65,6 +65,10 @@ public:
     InstrList nextlist;
     std::string start_label;
     std::string value;
+    
+    bool is_trenary = false;
+    std::string true_label;
+    std::string false_label;
 
     Exp_c(type_enum type, E_var var) : type(type), var(var){}
     Exp_c(type_enum type) : type(type){}
@@ -90,6 +94,8 @@ class FuncDecl_c : public Node{
     type_enum type;
     std::string name;
     std::vector<FormalDecl_c*> decls;
+    InstrList nextlist;
+    
     FuncDecl_c(type_enum type , const std::vector<FormalDecl_c*>& decls, std::string name) :
     type(type), decls(decls), name(name) {};
 };
@@ -141,6 +147,16 @@ public:
     }
 };
 
+class N_Marker : public Node {
+public:
+    std::string label;
+    InstrList nextlist;
+
+    N_Marker(InstrList nextlist){
+        this->nextlist = nextlist;
+    }; 
+};
+
 class Statement_c : public Node {
 public:
     InstrList nextlist;
@@ -148,6 +164,7 @@ public:
     InstrList breaklist;
     std::string start_label;
     bool was_backpatched = false;
+    bool is_break = false;
     Statement_c(){};
 };
 
@@ -158,6 +175,8 @@ public:
     std::vector<Statement_c*> s_list;
     InstrList breaklist;
     Statements_c(const std::vector<Statement_c*>& s_list) : s_list(s_list) {};
+    Statements_c(std::string start_label, const std::vector<Statement_c*>& s_list) : start_label(start_label), s_list(s_list) {};
+
 };
 
 bool checkBoolExp(Exp_c& exp);

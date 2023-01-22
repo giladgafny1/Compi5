@@ -18,12 +18,6 @@ public:
     /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
     std::string freshVar();
-    /** 
-     * Allocating mem on stack for local variables.
-     * Always allocating 32 bits (4 bytes).
-     * If bool/byte type, then uses zext instr.
-     * Returns offset of allocated var.
-     */
 
     void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
 
@@ -54,7 +48,7 @@ public:
 
     void handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_false_exp, Exp_c& new_exp);
 
-    void alloca_ver_for_function();
+    void alloca_ver_for_function(FuncDecl_c& func_decl);
 
     void store_var(int offset, Exp_c& exp, Statement_c &s);
 
@@ -73,7 +67,7 @@ public:
 
     void define_function(FuncDecl_c& func);
 
-    void function_end(RetType_c& type, Statements_c &s);
+    void function_end(RetType_c& type, Statements_c &s, N_Marker &n_marker);
 
     void deal_with_return(Exp_c &exp, Statement_c &s);
 
@@ -97,12 +91,14 @@ public:
 
     void handle_first_statement(Statements_c &statements, Statement_c &s);
 
-    void handle_statements(Statements_c &statements, Statement_c &s);
+    void handle_statements(Statements_c &new_statements, Statement_c &s);
 
     void handle_statement_close(Statement_c &new_s, Statements_c &statements);
 
     Exp_c* bool_exp(Exp_c &exp);
 
-    void emit_globals();
+    std::string trenary_phi(Exp_c &exp);
+
+    void emit_start();
 };
 #endif

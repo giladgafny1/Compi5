@@ -42,7 +42,8 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     this->cb->bpatch(exp2.nextlist, binop_start_label);
 
     if (binop_text[0] == '/') {
-
+        /* Division check */
+        this->cb->emit("call void @division_by_zero(i32 " + exp2.var + ")");
     }
     this->cb->emit(new_exp.var + " = " + binop_instr + "i32 " + exp1.var + ", " + exp2.var);
     /* Check overflow */
@@ -192,26 +193,36 @@ void CodeGen::handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_fals
     new_exp.start_label = bool_exp.start_label;
     /* Both exp will have a same next list (since from both the code jump to the same, not yet set, spot)*/
     new_exp.nextlist = cb->merge(if_true_exp.nextlist, if_false_exp.nextlist);
+    new_exp.is_trenary = true;
+    new_exp.true_label = if_true_exp.start_label;
+    new_exp.false_label = if_false_exp.start_label;
 }
 
-void CodeGen::alloca_ver_for_function()
+void CodeGen::alloca_ver_for_function(FuncDecl_c &func)
 {
     this->current_var_for_function = this->freshVar();
     cb->emit(this->current_var_for_function + " = alloca i32, i32 50");
+    //int instr = cb->emit("br label @");
+    //std::cout << ("HERE") << endl;
+    //func.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
 }
 
 void CodeGen::store_var(int offset, Exp_c& exp, Statement_c &s)
 {
     std::string var = exp.var;
-    if(exp.type == Bool_t)
-    {
+    if(exp.type == Bool_t) {
         Exp_c* new_exp = bool_exp(exp);
         var = new_exp->var;
     }
     std::string label = cb->genLabel();
     cb->bpatch(exp.nextlist, label);
     s.start_label = exp.start_label;
+     if (exp.is_trenary) {
+        var = trenary_phi(exp);
+    }
     std::string get_ptr = this->freshVar();
+    //debugging var6:
+    std::cout << "value is " << exp.value << endl;
     cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
     cb->emit("store i32 " + var + ", i32* " + get_ptr);
     int nextinstr = cb->emit("br label @");
@@ -331,14 +342,16 @@ void CodeGen::define_function(FuncDecl_c& func)
     cout<<func.name<<endl;
     if (!func.decls.empty())
         args_to_print.erase(args_to_print.size() -2);
-    cout<<func.name + "!"<<endl;
-    cb->emit("define i32 @" + func.name + "(" + args_to_print + "){");
+    if (func.type == Void_t)
+        cb->emit("define void @" + func.name + "(" + args_to_print + "){");
+    else
+        cb->emit("define i32 @" + func.name + "(" + args_to_print + "){");
 }
 
-void CodeGen::function_end(RetType_c& type, Statements_c &s)
+void CodeGen::function_end(RetType_c& type, Statements_c &s, N_Marker &n_marker)
 {
+    cb->bpatch(n_marker.nextlist, s.start_label);
     std::string next_label = cb->genLabel();
-    cout<<"in function den - label : "<<next_label<<endl;
     cb->bpatch(s.nextlist, next_label);
     if(type.type == Void_t)
         cb->emit("ret void");
@@ -361,7 +374,8 @@ void CodeGen::deal_with_return(Exp_c &exp, Statement_c &s)
     //int addr = cb->emit("br label @");
     //s.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(addr, FIRST));
     //Junk vector for trying
-    s.nextlist.push_back(std::pair<int, BranchLabelIndex>(-1, FIRST));
+    int instr = cb->emit("br label @");
+    s.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
 }
 
 void CodeGen::deal_with_return(Statement_c &s)
@@ -374,7 +388,8 @@ void CodeGen::deal_with_return(Statement_c &s)
     //int addr = cb->emit("br label @");
 
     //Junk vector for trying
-    s.nextlist.push_back(std::pair<int, BranchLabelIndex>(-1, FIRST));
+    int instr = cb->emit("br label @");
+    s.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
 }
 
 void CodeGen::deal_with_break(Statement_c &s)
@@ -383,6 +398,7 @@ void CodeGen::deal_with_break(Statement_c &s)
     cout<<"in break"<<endl;
     int next_quad = cb->emit("br label @");
     s.breaklist = cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST));
+    s.is_break = true;
     cout<<"end break"<<endl;
 }
 
@@ -414,7 +430,7 @@ void CodeGen::end_while(Statement_c &new_s, Exp_c &exp, Statement_c &s)
     cb->bpatch(s.nextlist, exp.start_label);
     cb->bpatch(exp.truelist, s.start_label);
     //labels_while.pop();
-    if (!s.breaklist.empty()){
+    if (s.is_break){
         cout<<"breaklist no empty"<<endl;
         /* Will be backpatched to start label of next statement */
         /* Todo: what if last statement in scope - maybe boolean (was backpatched)*/
@@ -433,14 +449,11 @@ void CodeGen::deal_with_else(Exp_c &exp)
 
 void CodeGen::end_else_if(Statement_c &new_s ,Exp_c &exp, Statement_c &s1, Statement_c &s2)
 {
-    cout<<"start end if else"<<endl;
     cb->bpatch(exp.truelist, s1.start_label);
     cb->bpatch(exp.falselist, s2.start_label);
 
     new_s.start_label = exp.start_label;
-    std::cout << "start label is " << new_s.start_label << endl;
     new_s.nextlist = cb->merge(s1.nextlist, s2.nextlist);
-    cout<<"size of new_s list is"<<new_s.nextlist.size()<<endl;
 }
 
 void CodeGen::call_as_statement(Call_c& call, Statement_c &s)
@@ -451,37 +464,35 @@ void CodeGen::call_as_statement(Call_c& call, Statement_c &s)
 
  void CodeGen::merge_statement_lists(Statement_c &s, Statement_c &s_list)
  {
-    cout<<"in merge now"<<endl;
     s_list.nextlist = cb->merge(s.nextlist, s_list.nextlist);
  }
 
  void CodeGen::handle_first_statement(Statements_c &statements, Statement_c &s)
  {
-    std::cout << "in func handle_first_statement" << endl;
     statements.start_label = s.start_label;
     //std::cout << "before nlist -> crushing on statements.nextlist" << endl;
     //std::cout << s.nextlist.size() << endl;
     //std::cout << s.start_label << endl;
     statements.nextlist = s.nextlist;
     //std::cout << "after func" << endl;
-    if (!(s.breaklist.empty()))
+    if (s.is_break)
     {
         statements.breaklist = s.breaklist;
     }
  }
 
- void CodeGen::handle_statements(Statements_c &statements, Statement_c &s)
+ void CodeGen::handle_statements(Statements_c &new_statements, Statement_c &s)
  {
     /* start_label already assigned because $$ = $1 was done */
     /* next list of last statement in list, will point to start label of new statement */
-    cout<<"in h.s the start label is "<<s.start_label<<endl;
-    cb->bpatch(statements.nextlist, s.start_label);
-    statements.s_list.push_back(&s);
+    //cb->printCodeBuffer();
+    cb->bpatch(new_statements.nextlist, s.start_label);
+    new_statements.s_list.push_back(&s);
     /* next list of the vector is the next list of last statement */
-    statements.nextlist = s.nextlist;
-    if (!(s.breaklist.empty()))
+    new_statements.nextlist = s.nextlist;
+    if (s.is_break)
     {
-        statements.breaklist = s.breaklist;
+        new_statements.breaklist = s.breaklist;
     }
  }
 
@@ -521,6 +532,13 @@ Exp_c* CodeGen::bool_exp(Exp_c &exp) {
     cb->bpatch(next, next_label);
     cb->emit(new_exp->var + " = phi i32 [ 1, %" + true_label + "], [0, %" + false_label + "]");
     return new_exp;
+}
+
+std::string CodeGen::trenary_phi(Exp_c &exp)
+{
+    std::string var = freshVar();
+    cb->emit(var + " = phi i32 [ 1, %" + exp.true_label + "], [0, %" + exp.false_label + "]");
+    return var;
 }
 
 void CodeGen::emit_start()
