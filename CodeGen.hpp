@@ -15,7 +15,6 @@ public:
     std::stack<std::string> labels_while; 
     int count_label=0;
     CodeGen(CodeBuffer *cb): cb(cb){};  
-    /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
     std::string freshVar();
 
@@ -24,13 +23,6 @@ public:
     void emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text);
 
     /* Boolean handling functions */
-    /** 
-     * Emit relop function should be called only when we must use a bool variable:
-     * 1. When a bool type is assigned or read.
-     * 2. When a relop is calculated by icmp (happens for example before br in LLVM). - I think this is the case for this. see Lec 6 slide 50.
-     * 3. Before a bool type is returned from a function.
-     * 4. before a bool type is sent as a parameter.
-     **/
     void emit_relop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string relop_text);
 
     void handle_and(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp);

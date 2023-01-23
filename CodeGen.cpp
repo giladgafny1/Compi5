@@ -19,8 +19,6 @@ std::string CodeGen::freshVarGlobal()
 
 void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, const std::string binop_text)
 {
-    //if (binop_text == "/")
-        //add check divide by zero - Gilad: It needs to be in the code since it's a run-time thing.
     std::string binop_instr = "";
     switch (binop_text[0]) {
         case '+':
@@ -65,7 +63,6 @@ void CodeGen::emit_binop(const Exp_c& exp1, const Exp_c& exp2, Exp_c& new_exp, c
     /* Entry is exp1 */
     new_exp.start_label = exp1.start_label;
     /* nextlist of exp1 is exp2 entry*/
-   // cout<<"exp2 start label"<<exp2.start_label<<endl;
     this->cb->bpatch(exp1.nextlist, exp2.start_label);
     /* Create next list fot new exp (aftter the binop is done) */
     int next_instr = this->cb->emit("br label @");
@@ -190,12 +187,20 @@ void CodeGen::handle_parentheses(const Exp_c& exp, Exp_c& new_exp)
 
 void CodeGen::handle_convert(const Exp_c& exp, Exp_c& new_exp)
 {
-    /* No need to generate code here since byte and int are both i32 */
-    new_exp.var = exp.var;
-    new_exp.value = exp.value;
-    //TODO: not sure this is right to do with memory
-    new_exp.nextlist = exp.nextlist;
+    if (new_exp.type == Byte_t && exp.type == Int_t) {
+        std::string label = cb->genLabel();
+        this->cb->bpatch(exp.nextlist, label);
+        new_exp.var = this->freshVar();
+        this->cb->emit(new_exp.var + " = " + "and " + "i32 " + exp.var + ", " + "255");
+        int addr = cb->emit("br label @");
+        new_exp.nextlist = cb->makelist(std::pair<int, BranchLabelIndex>(addr, FIRST));
+    }
+    else {
+        new_exp.var = exp.var;
+        new_exp.nextlist = exp.nextlist;
+    }
     new_exp.start_label = exp.start_label;
+    new_exp.value = exp.value;
 }
 
 string getSize(type_enum type)
@@ -204,55 +209,66 @@ string getSize(type_enum type)
         return "i8*";
     return "i32";
 }
-/*
-void CodeGen::handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_false_exp, Exp_c& new_exp)
-{
-    // Set truelist/falselist of bool 
-    std::string label_true = cb->genLabel();
-    cout<<label_true<<endl;
-    this->cb->bpatch(bool_exp.truelist, label_true);
-    int next_quad = cb->emit(new_exp.var +  " = " + getSize(new_exp.type) + " " + if_true_exp.var);
-    cb->bpatch(cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST)),if_true_exp.start_label);
-
-    std::string label_false = cb->genLabel();
-    cout<<label_false<<endl;
-    this->cb->bpatch(bool_exp.falselist, label_false);
-    int next_quad1 = cb->emit(new_exp.var +  " = " + getSize(new_exp.type) + " " + if_false_exp.var);
-    cb->bpatch(cb->makelist(std::pair<int, BranchLabelIndex>(next_quad1, FIRST)),if_false_exp.start_label);  
-    new_exp.start_label = bool_exp.start_label;
-    // Both exp will have a same next list (since from both the code jump to the same, not yet set, spot)
-    new_exp.nextlist = cb->merge(if_true_exp.nextlist, if_false_exp.nextlist);
-    new_exp.is_trenary = true;
-    new_exp.true_label = if_true_exp.start_label;
-    new_exp.false_label = if_false_exp.start_label;
-}
-*/
 
 void CodeGen::handle_trenary(Exp_c& if_true_exp, Exp_c& bool_exp, Exp_c& if_false_exp, Exp_c& new_exp)
 {
+   
+    //cb->emit("br label %" + true_list);
+    std::string true_label = cb->genLabel();
+    int address1 = cb->emit("br label @");
+    
+    std::string false_label = cb->genLabel();
+    int address2 = cb->emit("br label @");
+
+    std::string next_label = cb->genLabel();
+
+    InstrList next = cb->merge(cb->makelist(pair<int, BranchLabelIndex>(address1, FIRST)),
+                               cb->makelist(pair<int, BranchLabelIndex>(address2, FIRST)));
+
+    cb->bpatch(bool_exp.truelist, if_true_exp.start_label);
+    cb->bpatch(bool_exp.falselist, if_false_exp.start_label);
+    if (if_true_exp.type != Bool_t) {
+        cb->bpatch(if_true_exp.nextlist, true_label);
+        cb->bpatch(if_false_exp.nextlist, false_label);
+    }
+    else {
+        cb->bpatch(if_true_exp.truelist, true_label);
+        cb->bpatch(if_true_exp.falselist, false_label);
+        cb->bpatch(if_false_exp.truelist, true_label);
+        cb->bpatch(if_false_exp.falselist, false_label);
+    }
+    new_exp.var = freshVar();
+    cb->bpatch(next, next_label);
+    if (if_true_exp.type != Bool_t) {
+        if (if_true_exp.type == String_t) {
+            cb->emit(new_exp.var + " = phi i8* [" + if_true_exp.var + ", %" + true_label + "], [" + if_false_exp.var + ", %" + false_label + "]");
+        }
+        else {
+            cb->emit(new_exp.var + " = phi i32 [" + if_true_exp.var + ", %" + true_label + "], [" + if_false_exp.var + ", %" + false_label + "]");
+        }
+        int address = cb->emit("br label @");
+        new_exp.nextlist = cb->makelist(pair<int, BranchLabelIndex>(address, FIRST));
+    }
+    else {
+        cb->emit(new_exp.var + " = phi i1 [ 1, %" + true_label + "], [0, %" + false_label + "]");
+        int next_instr = this->cb->emit("br i1 " + new_exp.var + ", label @, label @");
+        new_exp.truelist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, FIRST));
+        new_exp.falselist = this->cb->makelist(std::pair<int, BranchLabelIndex>(next_instr, SECOND));
+    }
     /* Set truelist/falselist of bool */
     this->cb->bpatch(bool_exp.truelist, if_true_exp.start_label);
     this->cb->bpatch(bool_exp.falselist, if_false_exp.start_label);
     
     new_exp.start_label = bool_exp.start_label;
-    /* Both exp will have a same next list (since from both the code jump to the same, not yet set, spot)*/
-    new_exp.nextlist = cb->merge(if_true_exp.nextlist, if_false_exp.nextlist);
-    new_exp.is_trenary = true;
-    new_exp.true_label = if_true_exp.start_label;
-    new_exp.false_label = if_false_exp.start_label;
 }
 void CodeGen::alloca_ver_for_function(FuncDecl_c &func)
 {
     this->current_var_for_function = this->freshVar();
     cb->emit(this->current_var_for_function + " = alloca i32, i32 50");
-    //int instr = cb->emit("br label @");
-    //std::cout << ("HERE") << endl;
-    //func.nextlist = this->cb->makelist(std::pair<int, BranchLabelIndex>(instr, FIRST));
 }
 
 void CodeGen::store_var(int offset, Exp_c& exp, Statement_c &s)
 {
-    //std::string var = exp.var;
     InstrList next_list = exp.nextlist;
     if(exp.type == Bool_t) {
         Exp_c* new_exp = bool_exp(exp);
@@ -261,20 +277,9 @@ void CodeGen::store_var(int offset, Exp_c& exp, Statement_c &s)
         next_list = new_exp->nextlist;
     }
     std::string label = cb->genLabel();
-    //cout<<"in store val the label is"<< label<<endl;
     cb->bpatch(next_list, label);
-   // cb->bpatch(exp.nextlist, label);
     s.start_label = exp.start_label;
-    if (exp.is_trenary) {
-        //int next_quad = cb->emit("br label @");
-       // std::string fake_label = cb->genLabel();
-       // cb->bpatch(cb->makelist(std::pair<int, BranchLabelIndex>(next_quad, FIRST)),fake_label);
-       // cout<<"fake label"<<fake_label<<endl;
-        exp.var = trenary_phi(exp);
-    }
     std::string get_ptr = this->freshVar();
-    //debugging var6:
-    //std::cout << "value is " << exp.value << endl;
     cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
     cb->emit("store i32 " + exp.var + ", i32* " + get_ptr);
     int nextinstr = cb->emit("br label @");
@@ -288,9 +293,6 @@ std::string CodeGen::initialize_var(Statement_c &new_s, int offset, type_enum ty
     new_s.start_label = cb->genLabel();
     if (type != Bool_t)
         cb->emit(new_var + " = add i32 " + "0" + ", 0");
-    else{
-       // this->handle_false();?
-    }
     cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
     cb->emit("store i32 " + new_var + ", i32* " + get_ptr);
     int nextinstr = cb->emit("br label @");
@@ -302,7 +304,6 @@ std::string CodeGen::load_var(Exp_c& exp, int offset)
 {
     exp.start_label = cb->genLabel();
     if (offset >= 0) {
-      //  cout<<"the label is "<<exp.start_label<<endl; 
         std::string new_var = this->freshVar();
         std::string get_ptr = this->freshVar();
         cb->emit(get_ptr + " = getelementptr i32, i32* " + this->current_var_for_function + ", i32 " + std::to_string(offset));
@@ -338,11 +339,9 @@ std::string CodeGen::emit_num_assign(Exp_c &new_exp, std::string var, std::strin
 
 void CodeGen::handle_string(Exp_c &exp, String_c &string)
 {
-    //cout<<"in handle string"<<endl;
     std::string var = freshVarGlobal();
     std::string size_to_emit = "[" + to_string(string.str.length() - 1) + " x i8]";
     std::string str = string.str;
-    //not sure if value is needed
     exp.value = str;
     str.pop_back();
     std::string str_to_emit = "c" + str + "\\00";
@@ -361,7 +360,6 @@ void CodeGen::handle_string(Exp_c &exp, String_c &string)
 
 void CodeGen::deal_with_if(Statement_c &new_s, Exp_c& exp, Statement_c &s)
 {
-   // cout<<"in deal with if"<<endl;
     cb->bpatch(exp.truelist, s.start_label);
     new_s.start_label = exp.start_label;
     new_s.nextlist = cb->merge(exp.falselist, s.nextlist);
@@ -373,12 +371,10 @@ void CodeGen::deal_with_if(Statement_c &new_s, Exp_c& exp, Statement_c &s)
     {
         new_s.conlist = s.conlist;
     }
-    //cout<<"end deal with if"<<endl;
 }
 
 void CodeGen::handle_bool_explist(Exp_c &exp)
 {
-    //<<"in handle bool explist"<<endl;
     std::string true_label = cb->genLabel();
     cb->emit(freshVar() + " = zext i1 true to i32");
     int address1 = cb->emit("br label @");
@@ -402,7 +398,6 @@ void CodeGen::handle_bool_explist(Exp_c &exp)
 
 void CodeGen::deal_with_call(Call_c& call, std::vector<Exp_c*>& expressions)
 {
-    //cout<<"in deal with call"<<endl;
     call.var = freshVar();
     /* Call starts with the "calculation" of it's first parameter */
     call.start_label = expressions[expressions.size() - 1]->start_label;

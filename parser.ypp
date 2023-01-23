@@ -9,8 +9,6 @@ extern int yylex();
 extern int yylineno;
 using namespace output;
 
-#define DEBUG 0
-
 int yyerror(const char * message);
 
 SymbolTable *sym_table = SymbolTable::getSymTable();
@@ -33,12 +31,9 @@ CodeGen *code_gen;
 %nonassoc COMMA
 %nonassoc LBRACE
 %nonassoc RBRACE
-%left EQUAL_RELOP
-%left RELOP
-%left PLUS
-%left MINUS
-%left MULT
-%left DIV
+%left EQUAL_RELOP RELOP
+%left PLUS MINUS 
+%left MULT DIV
 %right NOT
 %left LPAREN
 %left RPAREN
@@ -63,7 +58,6 @@ FuncDecl : RetType ID LPAREN Formals {
             $$ = new FuncDecl_c(ret_type->type , formals->decls, id->name);
             sym_table->addFunction(sym_table->tables.top(), id->name, ret_type->type, NO_OFFSET);
             sym_table->function_name_scope= id->name;
-            //cout<<id->name<<endl;
             int offset = -1;
             int keep_offset = sym_table->offsets.top();
             for (auto & param : formals->decls) {
@@ -79,14 +73,10 @@ FuncDecl : RetType ID LPAREN Formals {
             FuncDecl_c* func = (FuncDecl_c*)$$;
             code_gen->define_function(*func);
             code_gen->alloca_ver_for_function(*func);
-            //std::cout  << func->nextlist.back().first << " is it callable! " << endl;
-            //std::cout << func->nextlist.size() << endl;
-            //std::cout << "The address is " << func << endl;
         } RPAREN LBRACE N Statements RBRACE 
         {
             sym_table->function_name_scope= "";
             code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$9, *(N_Marker*)$8); 
-            //code_gen->function_end(*(RetType_c*)$1, *(Statements_c*)$8, *(FuncDecl_c*)$$); 
             sym_table->closeScope();
         }
 RetType : Type {Type_c* type = (Type_c*)$1;
@@ -123,23 +113,15 @@ FormalDecl : Type ID    {
                         }
 Statements : Statement {
                         /* First statment in list */
-                        if (DEBUG)
-                            cout<<"in statements first" << endl;
                         Statement_c* s = (Statement_c*)$1;
-                        //cout<<"size of list in sts"<<s->nextlist.size()<<endl;
                         std::vector<Statement_c*> s_list;
                         s_list.push_back(s);
                         $$ = new Statements_c(s_list);
                         Statements_c* statements = (Statements_c*)$$;
-                        //std::cout << s->start_label << endl;
                         code_gen->handle_first_statement(*statements, *s);
-                        if (DEBUG)
-                            cout<<"finished statements first" << endl;
-                        }
+                        }  
             | Statements Statement 
             {
-                if (DEBUG)
-                        cout<<"in statements recursive" << endl;
                 $$ = (Statements_c*)$1;
                 Statements_c* new_statements = (Statements_c*)$$;
                 Statements_c* older_statements = (Statements_c*)$1;
@@ -148,19 +130,11 @@ Statements : Statement {
             }
 Statement : LBRACE ScopeOpen Statements RBRACE 
                 {
-                    if (DEBUG)
-                        cout<<"in statement_close"<<endl;
                     Statements_c* statements = (Statements_c*)$3;
                     $$ = new Statement_c();
-                    //cout<<"s list size in parser"<<statements->nextlist.size()<<endl;
                     Statement_c* new_s =(Statement_c*)($$);
                     code_gen->handle_statement_close(*new_s, *statements);
-                    if (DEBUG)
-                    {
-                        std::cout << new_s->start_label << " is start label of statement" << endl;
-                    }
                     sym_table->closeScope();
-                    //cout<<"new s list size in parser"<<new_s->nextlist.size()<<endl;
                 }
             | Type ID SC    {Type_c* type = (Type_c*)$1;
                             ID_c* id = (ID_c*)$2;
@@ -172,7 +146,7 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                             id->var = code_gen->initialize_var(*(Statement_c*)$$, sym_table->offsets.top() + 1, id->type);
                             sym_table->insert(sym_table->tables.top(), id->name, type->type, sym_table->offsets.top() + 1, id->var);
                             id->type = type->type;
-                            }
+                            } 
             | Type ID ASSIGN Exp SC     {
                 Type_c* type = (Type_c*)$1;
                 ID_c* id = (ID_c*)$2;
@@ -191,12 +165,8 @@ Statement : LBRACE ScopeOpen Statements RBRACE
                 exp->value = id->name;
                 $$ = new Statement_c();
                 Statement_c* s = (Statement_c*)$$;
-                //if (DEBUG)
-                //std::cout << "started store_var" << endl;
                 code_gen->store_var(sym_table->offsets.top(), *exp, *s);
-                if (DEBUG)
-                    std::cout << "finished type id assign exp sc" << endl;
-                }
+            }
             | ID ASSIGN Exp SC
             {
                 ID_c* id = (ID_c*)($1);
@@ -246,10 +216,8 @@ Statement : LBRACE ScopeOpen Statements RBRACE
             }
             | IF  LPAREN CheckBoolExp RPAREN ScopeOpen Statement
             {
-               // cout<<"in if"<<endl;
                 Exp_c* exp1 = (Exp_c*)$3;
                 Statement_c* s = (Statement_c*)$6;
-                //cout<<"s list size in parser"<<s->nextlist.size()<<endl;
                 $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
                 code_gen->deal_with_if(*new_s, *exp1, *s);
@@ -258,16 +226,13 @@ Statement : LBRACE ScopeOpen Statements RBRACE
             | IF LPAREN CheckBoolExp RPAREN ScopeOpen Statement  ELSE {sym_table->closeScope();} ScopeOpen Statement {
                 $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
-                //code_gen->deal_with_else(*(Exp_c*)$3); 
                 code_gen->end_else_if(*new_s, *(Exp_c*)$3, *(Statement_c*)$6, *(Statement_c*)$10);
-                //cout<<"in if-else list size in parser"<<new_s->nextlist.size()<<endl;
                 sym_table->closeScope();
             }
             | WHILE LPAREN CheckBoolExp RPAREN ScopeWhileOpen Statement
             {
                 $$ = new Statement_c();
                 Statement_c* new_s = (Statement_c*)$$;
-              //  std::cout << "Before end_while"<<endl;
                 code_gen->end_while(*new_s, *(Exp_c*)$3, *(Statement_c*)$6);
                 sym_table->closeScope();
             } 
@@ -327,9 +292,6 @@ ExpList : Exp
             expressions.push_back(exp1);
             $$ = new ExpList_c(expressions);
             ExpList_c* new_exp_list = (ExpList_c*)$$;
-           // if (exp1->type == Bool_t) {
-             //   code_gen->handle_bool_explist(*exp1);
-            //}
         }
         | Exp COMMA ExpList
         {
@@ -338,9 +300,6 @@ ExpList : Exp
             exp_list->expressions.push_back(exp1);
             $$ = new ExpList_c(exp_list->expressions);
             ExpList_c* new_exp_list = (ExpList_c*)$$;
-            //if (exp1->type == Bool_t) {
-              //  code_gen->handle_bool_explist(*exp1);
-            //}
         }
 Type : INT  {$$ = new Type_c(Int_t);}
         | BYTE {$$ = new Type_c(Byte_t);}
@@ -383,7 +342,6 @@ Exp : LPAREN Exp RPAREN {
         }
         $$ = new Exp_c(checkNumType(*(Exp_c*)$1, *(Exp_c*)$3));
         Exp_c* new_exp = (Exp_c*)$$;
-        //check_types
         code_gen->emit_binop(*exp1, *exp2, *new_exp, "+");
     }
     | Exp MINUS Exp
@@ -448,9 +406,6 @@ Exp : LPAREN Exp RPAREN {
             Exp_c* new_exp = (Exp_c*)$$;
             new_exp->value = num->num_str;
             new_exp->start_label = code_gen->emit_num_assign(*new_exp, new_exp->var, num->num_str);
-            if (DEBUG) {
-                std::cout << "finished num" << endl;
-            }
             }
     | NUM B {
         Num_c* num = (Num_c*)$1;
