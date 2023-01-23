@@ -13,8 +13,8 @@ public:
     CodeBuffer *cb;
     std::string current_var_for_function = "";
     std::stack<std::string> labels_while; 
-
-    CodeGen(CodeBuffer *cb): cb(cb){};
+    int count_label=0;
+    CodeGen(CodeBuffer *cb): cb(cb){};  
     /* Generates the symbol table if it doesn't exist. otherwise returns the instance */
     
     std::string freshVar();

@@ -168,6 +168,7 @@ public:
     InstrList nextlist;
     /* Used for break statements in while */
     InstrList breaklist;
+    InstrList conlist;
     std::string start_label;
     bool was_backpatched = false;
     bool is_break = false;
@@ -180,6 +181,7 @@ public:
     std::string start_label;
     std::vector<Statement_c*> s_list;
     InstrList breaklist;
+    InstrList conlist;
     Statements_c(const std::vector<Statement_c*>& s_list) : s_list(s_list) {};
     Statements_c(std::string start_label, const std::vector<Statement_c*>& s_list) : start_label(start_label), s_list(s_list) {};
 

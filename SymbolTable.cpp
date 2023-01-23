@@ -25,15 +25,15 @@ Table* SymbolTable::newScope(bool iswhile) {
 }
 
 void SymbolTable::closeScope() {
-    output::endScope();
+   // output::endScope();
     Table* table_out = this->tables.top();
     for (auto & entry : table_out->entry_list)
     {
         if(!entry->isfunction){
-            output::printID(entry->name, entry->offset, typeToString(entry->type));
+        //    output::printID(entry->name, entry->offset, typeToString(entry->type));
         }
         else{
-            output::printID(entry->name, 0, output::makeFunctionType(typeToString(entry->type),  entry->argtypes));
+      //      output::printID(entry->name, 0, output::makeFunctionType(typeToString(entry->type),  entry->argtypes));
         }
         this->offsets.pop();
     }
